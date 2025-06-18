@@ -72,6 +72,18 @@ export const fetchMetadata = async (): Promise<any> => {
   return res.json();
 };
 
+export const verifyScopes = (token: string, requiredScopes: string[]): Boolean => {
+    const decoded = jwt.decode(token, { complete: true });
+    if (!decoded || typeof decoded !== 'object') throw new Error('Invalid token');
+
+    const payload = decoded.payload as JwtPayload;
+    if (payload.exp && payload.exp < Date.now() / 1000) throw new Error('Token has expired');
+
+    const tokenScopes = payload.scopes
+    if (!tokenScopes) return false;
+    return requiredScopes.every(scope => tokenScopes.includes(scope));
+};
+
 export const convertMetadataKeys = (metadata: any) => ({
   issuer: metadata.issuer,
   authorizationEndpoint: metadata.authorization_endpoint,

@@ -3,8 +3,10 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import fetch from 'node-fetch';
 import { z } from 'zod';
+import { verifyScopes } from '../lib/auth.js';
 import { ENDPOINTS } from '../types/endpoints.js';
 import { AuthInfo } from '../types/index.js';
+import { SCOPES } from '../types/scopes.js';
 
 interface OrgResponse {
   organization: {
@@ -22,13 +24,31 @@ export function registerCreateOrganizationTool(server: McpServer) {
     },
     async ({ content }, context) => {
       const authInfo = context.authInfo as AuthInfo;
-
-      if (!authInfo?.token || !authInfo.selectedEnvironmentId) {
+      const token = authInfo?.token;
+      if (!token) {
         return {
           content: [
             {
               type: 'text',
               text: 'Your session is terminated, please restart your client',
+            },
+          ],
+        };
+      }
+
+      let validScopes = verifyScopes(token, [SCOPES.organizationWrite])
+      if (!validScopes) {
+        return {
+          content: [{ type: 'text', text: 'You do not have permission to list environments. Please add the scopes in the client and restart the client.' }],
+        };
+      }
+      
+      if (!authInfo.selectedEnvironmentId) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'Use `set-environment` first.',
             },
           ],
         };

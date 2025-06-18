@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "make": {
+      "command": "npx", 
+      "args": [
+        "-y",
+        "mcp-remote",
+        "http://localhost:3001/sse?f=2",
+        "--static-oauth-client-metadata",
+        "{ \"scope\": \"openid profile email usr:read\" }"
+      ]
+    }
+  }
+}
