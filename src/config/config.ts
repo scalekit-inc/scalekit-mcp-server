@@ -8,4 +8,5 @@ export const config = {
   authIssuer: process.env.AUTH_ISSUER || '',
   authServerId: process.env.AUTH_SERVER_ID || '',
   authAudience: process.env.AUTH_AUDIENCE || '',
+  logLevel: process.env.LOG_LEVEL || 'info',
 };

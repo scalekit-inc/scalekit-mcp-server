@@ -13,11 +13,16 @@ export const setupTransportRoutes = (
   app.get('/sse', async (req, res) => {
     const authHeader = req.headers['authorization'];
     if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).set('WWW-Authenticate', `Bearer realm="scalekit", resource_metadata="${ENDPOINTS.oauthProtectedResource}"`).end();
+      return res.status(401).set('WWW-Authenticate', `Bearer realm="OAuth", resource_metadata="${ENDPOINTS.oauthProtectedResource}"`).end();
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const authInfo = await verifyToken(token);
+    let authInfo
+    try {
+      authInfo = await verifyToken(token);
+    } catch (err) {
+      return res.status(401).set('WWW-Authenticate', `Bearer realm="OAuth", resource_metadata="${ENDPOINTS.oauthProtectedResource}"`).end();
+    }
     const transport = new SSEServerTransport('/messages', res);
     (transport as any).session = { authInfo, token };
 

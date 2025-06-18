@@ -2,6 +2,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import { logger } from '../lib/logger.js';
 import { AuthInfo } from '../types/index.js';
 
 export function registerSetEnvironmentTool(server: McpServer) {
@@ -15,6 +16,7 @@ export function registerSetEnvironmentTool(server: McpServer) {
       const authInfo = (context.authInfo ?? {}) as AuthInfo;
 
       if (!authInfo.token) {
+        logger.error('No token found in authInfo for set-environment');
         return {
           content: [
             {
