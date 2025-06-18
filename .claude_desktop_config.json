@@ -5,9 +5,9 @@
       "args": [
         "-y",
         "mcp-remote",
-        "http://localhost:3001/sse?f=2",
+        "http://localhost:3001/sse",
         "--static-oauth-client-metadata",
-        "{ \"scope\": \"openid profile email usr:read\" }"
+        "{ \"scope\": \"openid profile email env:read org:write\" }"
       ]
     }
   }
