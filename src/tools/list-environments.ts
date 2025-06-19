@@ -36,8 +36,8 @@ export function registerListEnvironmentsTool(server: McpServer) {
       });
       const data = (await res.json()) as { environments: Environment[] };
       environments = data.environments;
-    } catch {
-      logger.error('Failed to fetch environments', { error: 'Failed to fetch environments' });
+    } catch (err) {
+      logger.error('Failed to fetch environments for list-environments', { error: err, token });
       environments = [];
     }
 

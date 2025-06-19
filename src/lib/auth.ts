@@ -166,10 +166,10 @@ export const oauthAuthorizationServerHandler = async (req: Request, res: Respons
  */
 export const oauthProtectedResourceHandler = (req: Request, res: Response) => {
   const metadata = {
-    resource: config.host,
-    authorization_servers: [`${config.host}/.well-known/oauth-authorization-server`],
+    resource: config.apiBaseUrl,
+    authorization_servers: [`${config.apiBaseUrl}/.well-known/oauth-authorization-server`],
     bearer_methods_supported: ['header'],
-    resource_documentation: `${config.host}/docs`,
+    resource_documentation: `${config.apiBaseUrl}/docs`,
     scopes_supported: getAllScopes(),
   };
 
