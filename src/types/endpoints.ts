@@ -14,6 +14,6 @@ export const ENDPOINTS = {
   organizations: {
     create: `${SK_API_BASE_URL}/api/v1/organizations`,
   },
-  oauthAuthorizationServer: `${AUTH_BASE_URL}/${config.authServerId}${OAUTH_AUTHORIZATION_SERVER_PATH}`,
+  oauthAuthorizationServer: `${AUTH_BASE_URL}/applications/${config.authServerId}${OAUTH_AUTHORIZATION_SERVER_PATH}`,
   oauthProtectedResource: `${API_BASE_URL}${OAUTH_PROTECTED_RESOURCE_PATH}`,
 };
