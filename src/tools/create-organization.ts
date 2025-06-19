@@ -64,6 +64,7 @@ export function registerCreateOrganizationTool(server: McpServer) {
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${authInfo.token}`,
+            'x-env-domain': authInfo.selctEnvironmentDomain || '',
           },
           body: JSON.stringify({
             environment_id: authInfo.selectedEnvironmentId,

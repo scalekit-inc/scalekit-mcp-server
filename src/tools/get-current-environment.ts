@@ -4,8 +4,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import fetch from 'node-fetch';
 import { verifyScopes } from '../lib/auth.js';
 import { logger } from '../lib/logger.js';
-import { AuthInfo, Environment } from '../types';
 import { ENDPOINTS } from '../types/endpoints.js';
+import { AuthInfo, Environment } from '../types/index.js';
 import { SCOPES } from '../types/scopes.js';
 
 export function registerGetCurrentEnvironmentTool(server: McpServer) {

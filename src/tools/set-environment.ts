@@ -3,7 +3,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { logger } from '../lib/logger.js';
-import { AuthInfo } from '../types/index.js';
+import { ENDPOINTS } from '../types/endpoints.js';
+import { AuthInfo, Environment } from '../types/index.js';
 
 export function registerSetEnvironmentTool(server: McpServer) {
   server.tool(
@@ -28,7 +29,25 @@ export function registerSetEnvironmentTool(server: McpServer) {
       }
 
       authInfo.selectedEnvironmentId = content;
-      context.authInfo = authInfo as any;;
+      try {
+            const res = await fetch(`${ENDPOINTS.environments.getById(authInfo.selectedEnvironmentId)}`, {
+              headers: { Authorization: `Bearer ${authInfo.token}` },
+            });
+            const data = (await res.json()) as { environment: Environment };
+            authInfo.selctEnvironmentDomain = data.environment.domain;
+      } catch {
+        logger.error(`Failed to fetch environment for get-current-environment: ${authInfo.selectedEnvironmentId}`);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Failed to set environment. Please check if the ID ${content} is correct.`,
+            },
+          ],
+        };
+      }
+
+      context.authInfo = authInfo as any;
 
       return {
         content: [

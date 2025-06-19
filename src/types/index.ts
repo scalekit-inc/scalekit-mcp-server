@@ -1,6 +1,7 @@
 export interface Environment {
   id: string;
   display_name?: string;
+  domain?: string;
 }
 
 export interface AuthInfo {
@@ -11,4 +12,5 @@ export interface AuthInfo {
   scopes?: string[] | string;
   claims?: Record<string, unknown>;
   selectedEnvironmentId?: string;
+  selctEnvironmentDomain?: string;
 }
