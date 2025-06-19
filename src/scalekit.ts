@@ -18,7 +18,12 @@ const PORT = config.port;
 const server = new McpServer({ name: 'Scalekit', version: '0.0.0' });
 
 const app = express();
-app.use(cors());
+
+app.use(cors({
+  origin: ['https://mcp.scalekit.cloud'],
+  credentials: true,
+}));
+
 app.use(express.json());
 
 (async () => {
