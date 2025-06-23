@@ -1,6 +1,4 @@
-// src/tools/create-organization.ts
-
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import fetch from 'node-fetch';
 import { z } from 'zod';
 import { verifyScopes } from '../lib/auth.js';
@@ -8,6 +6,7 @@ import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
 import { AuthInfo } from '../types/index.js';
 import { SCOPES } from '../types/scopes.js';
+import { TOOLS } from './index.js';
 
 interface OrgResponse {
   organization: {
@@ -16,10 +15,14 @@ interface OrgResponse {
   };
 }
 
-export function registerCreateOrganizationTool(server: McpServer) {
-  server.tool(
-    'create-organization',
-    'Create a new organization under the selected environment',
+export function registerOrganizationTools(server: McpServer){
+    TOOLS.create_organization.registeredTool = createOrganizationTool(server)
+}
+
+function createOrganizationTool(server: McpServer): RegisteredTool {
+ return server.tool(
+    TOOLS.create_organization.name,
+    TOOLS.create_organization.description,
     {
       content: z.string().min(1, 'Organization name is required'),
     },

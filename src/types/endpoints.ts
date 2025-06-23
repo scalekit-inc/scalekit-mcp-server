@@ -17,3 +17,13 @@ export const ENDPOINTS = {
   oauthAuthorizationServer: `${AUTH_BASE_URL}/applications/${config.authServerId}${OAUTH_AUTHORIZATION_SERVER_PATH}`,
   oauthProtectedResource: `${API_BASE_URL}${OAUTH_PROTECTED_RESOURCE_PATH}`,
 };
+
+let wwwHeaderValue = `Bearer realm="OAuth", resource_metadata="${ENDPOINTS.oauthProtectedResource}`
+if (config.mcpInspector){
+  wwwHeaderValue = `Bearer realm="OAuth", resource_metadata="${ENDPOINTS.oauthProtectedResource}, authorization_uri="${ENDPOINTS.oauthAuthorizationServer}"`
+}
+
+export const WWWHeader = {
+  HeaderKey: 'WWW-Authenticate',
+  HeaderValue: wwwHeaderValue,
+}
