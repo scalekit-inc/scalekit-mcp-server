@@ -16,7 +16,7 @@ interface OrgResponse {
 }
 
 export function registerOrganizationTools(server: McpServer){
-    TOOLS.create_organization.registeredTool = createOrganizationTool(server)
+  TOOLS.create_organization.registeredTool = createOrganizationTool(server)
 }
 
 function createOrganizationTool(server: McpServer): RegisteredTool {
@@ -76,17 +76,21 @@ function createOrganizationTool(server: McpServer): RegisteredTool {
         });
 
         const orgDetails = (await res.json()) as OrgResponse;
+        const orgId = orgDetails.organization.id;
 
         return {
           content: [
             {
-              type: 'text',
-              text: `Organization created: ${orgDetails.organization.display_name} (ID: ${orgDetails.organization.id})`,
-            },
-          ],
+              type: 'resource',
+              resource: {
+                uri: `environment://${authInfo.selctEnvironmentDomain}/organization://${orgId}`,
+                text: JSON.stringify(orgDetails, null, 2),
+                mimeType: 'application/json',
+              }
+            }
+          ]
         };
       } catch {
-        logger.error(`Failed to create organization: ${content}`);
         return {
           content: [
             {

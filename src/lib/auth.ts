@@ -100,6 +100,9 @@ export const fetchMetadata = async (): Promise<any> => {
 };
 
 export const verifyScopes = (token: string, requiredScopes: string[]): Boolean => {
+    if (config.mcpInspector) {
+        return true;
+    }
     const decoded = jwt.decode(token, { complete: true });
     if (!decoded || typeof decoded !== 'object') {
         logger.error('Invalid token format', { token });

@@ -26,7 +26,7 @@ export type ToolKey = keyof typeof toolsList;
 export type ToolDefinition = {
   name: ToolKey;
   description: string;
-  registeredTool?: RegisteredTool;
+    registeredTool?: RegisteredTool;
 };
 
 export const TOOLS: { [K in ToolKey]: ToolDefinition & { name: K } } = Object.fromEntries(

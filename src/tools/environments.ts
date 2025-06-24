@@ -12,7 +12,102 @@ export function registerEnvironmentTools(server: McpServer){
     TOOLS.list_environments.registeredTool = listEnvironmentsTool(server)
     TOOLS.set_environment.registeredTool = setEnvironmentTool(server)
     TOOLS.get_current_environment.registeredTool = getCurrentEnvironmentTool(server)
+    // do not uncomment below, it has been kept for future when clients are more evolved in terms of loading resources
+    // registerEnvironmentResource(server);
 }
+
+// the below is commented as clients load the resource from the server only once
+// export function registerEnvironmentResource(server: McpServer) {
+//   server.resource(
+//     'environment',
+//     new ResourceTemplate('environment://{envId}', {
+//       list: async (context) => {
+//         const authinfo = (context.authInfo as AuthInfo) ?? {};
+//         const token = authinfo.token;
+
+//         if (!token) {
+//           logger.error('No token found in authInfo for list-environments');
+//           return {
+//             resources: [],
+//             content: [{ type: 'text', text: 'Your session is terminated, please restart your client' }],
+//           };
+//         }
+
+//         let environments: Environment[] = [];
+
+//         let validScopes = verifyScopes(token, [SCOPES.environmentRead]);
+//         if (!validScopes) {
+//           logger.error(`Invalid scopes for list-environments: ${token}`);
+//           return {
+//             resources: [],
+//             content: [{ type: 'text', text: 'You do not have permission to list environments. Please add the scopes in the client and restart the client.' }],
+//           };
+//         }
+
+//         try {
+//           const res = await fetch(`${ENDPOINTS.environments.list}`, {
+//             headers: { Authorization: `Bearer ${token}` },
+//           });
+//           const data = (await res.json()) as { environments: Environment[] };
+//           environments = data.environments;
+//         } catch (err) {
+//           logger.error('Failed to fetch environments for list-environments', { error: err, token });
+//           environments = [];
+//           return {
+//             resources: [],
+//             content: [{ type: 'text', text: 'Failed to fetch environments. Please try again later.' }],
+//           };
+//         }
+//         return {
+//           resources: environments.map((env) => ({
+//             uri: `environment://${env.id}`,
+//             name: env.display_name ?? env.id,
+//             mimeType: 'application/json',
+//           })),
+//         };
+//       },
+//       complete: {}
+//     }),
+//     {
+//       name: 'Environment',
+//       description: 'Access environments by ID',
+//     },
+//     async (uri, context, internalContext) => {
+//       const authInfo = internalContext.authInfo as AuthInfo;
+//       const envDomain = context.envDomain as string;
+//       const envId = context.envId as string
+//       if (!authInfo?.token) {
+//         logger.error('No token found in authInfo while accessing environment resource.');
+//         throw new Error('Unauthorized');
+//       }
+//       try {
+//         const res = await fetch(`${ENDPOINTS.environments.getById(envId)}`, {
+//           headers: { 
+//             Authorization: `Bearer ${authInfo.token}`,
+//           }
+//         });
+//         if (!res.ok) {
+//           logger.error(`Failed to fetch environment: ${envId}`);
+//           throw new Error('Failed to fetch environment');
+//         }
+//         const env = await res.json();
+//         return {
+//           type: 'resource',
+//           contents: [
+//             {
+//               uri: uri.toString(),
+//               mimeType: 'application/json',
+//               text: JSON.stringify(env, null, 2),
+//             }
+//           ]
+//         };
+//       } catch (error) {
+//         logger.error(`Error fetching environment resource: ${error}`);
+//         throw error;
+//       }
+//     }
+//   );
+// }
 
 function listEnvironmentsTool(server: McpServer): RegisteredTool {
     return server.tool(
@@ -184,4 +279,5 @@ function getCurrentEnvironmentTool(server: McpServer): RegisteredTool {
     }
   });
 }
+
 
