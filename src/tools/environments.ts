@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { verifyScopes } from '../lib/auth.js';
 import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
-import { AuthInfo, Environment, Role } from '../types/index.js';
+import { AuthInfo, Environment, Role, Scope } from '../types/index.js';
 import { SCOPES } from '../types/scopes.js';
 import { TOOLS } from './index.js';
 
@@ -15,6 +15,8 @@ export function registerEnvironmentTools(server: McpServer){
     TOOLS.get_environment_details.registeredTool = getEnvironmentDetailsTool(server);
     TOOLS.list_environment_roles.registeredTool = listEnvironmentRolesTool(server);
     TOOLS.create_environment_role.registeredTool = createEnvironmentRolesTool(server);
+    TOOLS.create_environment_scope.registeredTool = createEnvironmentScopeTool(server);
+    TOOLS.list_environment_scopes.registeredTool = listEnvironmentScopesTool(server);
 }
 
 function listEnvironmentsTool(server: McpServer): RegisteredTool {
@@ -404,5 +406,157 @@ function createEnvironmentRolesTool(server: McpServer): RegisteredTool {
   });
 }
 
+function createEnvironmentScopeTool(server: McpServer): RegisteredTool {
+    return server.tool(
+        TOOLS.create_environment_scope.name,
+        TOOLS.create_environment_scope.description,
+        {
+          scopeName: z.string().min(1, 'Scope name is required'),
+          description: z.string().optional().default(''),
+        },
+        async ({scopeName, description}, context) => {
+    const authinfo = (context.authInfo as AuthInfo) ?? {};
+    const token = authinfo.token;
 
+    if (!token) {
+      logger.error('No token found in authInfo for create_environment_scope');
+      return {
+        content: [{ type: 'text', text: 'Your session is terminated, please restart your client' }],
+      };
+    }
+
+    var scope: Scope;
+
+    let validScopes = verifyScopes(token, [SCOPES.environmentWrite]);
+    if (!validScopes) {
+      logger.error(`Invalid scopes for create_environment_scope: ${token}`);
+      return {
+        content: [{ type: 'text', text: 'You do not have permission to create environment scope. Please add the scopes in the client and restart the client.' }],
+      };
+    }
+
+    if (!authinfo.selectedEnvironmentId) {
+        logger.warn(`No environment selected for creating scope`);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'Use `set-environment` first.',
+            },
+          ],
+        };
+      }
+
+    try {
+      const res = await fetch(`${ENDPOINTS.environments.createScopeById(authinfo.selectedEnvironmentId)}`, {
+        method: 'POST',
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'x-env-domain': authinfo.selectedEnvironmentDomain || '',
+        },
+        body: JSON.stringify({
+          name: scopeName,
+          description: description,
+        }),
+      });
+      if (res.status > 399 && res.status < 500) {
+        logger.error(`Failed to create scope: ${res.statusText}. ${res.json()}`);
+        return {
+          content: [
+            { type: 'text', text: 'Failed to create scope. Please check if the environment is correctly set or if this scope already exist or try again later.' }
+          ],
+        };
+      }
+      const data = (await res.json()) as { scope: Scope };
+      scope = data.scope;
+    } catch (err) {
+      logger.error('Failed to create environment scope for create_environment_scope', { error: err, token });
+      return {
+        content: [
+          { type: 'text', 
+            text: 'Failed to create scope. Please check if the environment is correctly set or try again later.' 
+          }
+        ],
+      };
+    }
+
+    return {
+      content: [
+      {
+        type: 'text',
+        text: `Scope created successfully:\nName: ${scope.name}\nDescription: ${scope.description}`,
+      },
+      ],
+    };
+  });
+}
+
+function listEnvironmentScopesTool(server: McpServer): RegisteredTool {
+    return server.tool(
+        TOOLS.list_environment_scopes.name,
+        TOOLS.list_environment_scopes.description,
+        async (context) => {
+    const authinfo = (context.authInfo as AuthInfo) ?? {};
+    const token = authinfo.token;
+
+    if (!token) {
+      logger.error('No token found in authInfo for list_environment_scopes');
+      return {
+        content: [{ type: 'text', text: 'Your session is terminated, please restart your client' }],
+      };
+    }
+
+    var scopes: Scope[];
+
+    let validScopes = verifyScopes(token, [SCOPES.environmentRead]);
+    if (!validScopes) {
+      logger.error(`Invalid scopes for list_environment_scopes: ${token}`);
+      return {
+        content: [{ type: 'text', text: 'You do not have permission to list environment scopes. Please add the scopes in the client and restart the client.' }],
+      };
+    }
+
+    if (!authinfo.selectedEnvironmentId) {
+        logger.warn(`No environment selected for listing organizations`);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'Use `set-environment` first.',
+            },
+          ],
+        };
+      }
+
+    try {
+      const res = await fetch(`${ENDPOINTS.environments.listScopesById(authinfo.selectedEnvironmentId)}`, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'x-env-domain': authinfo.selectedEnvironmentDomain || '',
+        },
+      });
+      const data = (await res.json()) as { scopes: Scope[] };
+      scopes = data.scopes;
+    } catch (err) {
+      logger.error('Failed to fetch environment scopes for list_environment_scopes', { error: err, token });
+      scopes = [];
+    }
+
+    return {
+      content: [
+      {
+        type: 'text',
+        text: scopes.length
+        ? `Available scopes:\n${scopes
+          .map(
+            (scope) =>
+            `Name: ${scope.name}\nDescription: ${scope.description}\n`
+          )
+          .join('\n')}`
+        : 'No scopes found for this environment.',
+      },
+      ],
+    };
+  });
+}
 

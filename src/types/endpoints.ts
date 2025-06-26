@@ -16,6 +16,11 @@ export const ENDPOINTS = {
     getById: (id: string) => `${SK_API_BASE_URL}/api/v1/environments/${id}`,
     listRoles: `${SK_API_BASE_URL}/api/v1/environments/-/roles`,
     createRoleById: (id:string) => `${SK_API_BASE_URL}/api/v1/environments/${id}/roles`,
+    createScopeById: (id:string) => `${SK_API_BASE_URL}/api/v1/environments/${id}/scopes`,
+    listScopesById: (id:string) => `${SK_API_BASE_URL}/api/v1/environments/${id}/scopes`,
+    listResources: `${SK_API_BASE_URL}/api/v1/resources`,
+    createResourceById: `${SK_API_BASE_URL}/api/v1/resources`,
+    updateResourceById: (id: string) => `${SK_API_BASE_URL}/api/v1/resources/${id}`,
   },
   organizations: {
     list: `${SK_API_BASE_URL}/api/v1/organizations`,

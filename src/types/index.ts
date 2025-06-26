@@ -149,3 +149,31 @@ export interface UserProfile {
   metadata: Record<string, unknown>;
   custom_attributes: Record<string, unknown>;
 }
+
+export interface Scope {
+  name: string;
+  description: string;
+}
+
+export interface ListResourcesResponse {
+  total_size: number;
+  next_page_token: string;
+  resources: Resource[];
+}
+
+export interface Resource {
+  id: string;
+  name: string;
+  resource_id: string;
+  description: string;
+  resource_type: string;
+  third_party: boolean;
+  disable_dynamic_client_registration: boolean;
+  logo_uri: string;
+  access_token_expiry: string;
+  refresh_token_expiry: string;
+  create_time: string;
+  update_time: string;
+}
+
+

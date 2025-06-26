@@ -2,6 +2,7 @@ import { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.
 import { registerConnectionTools } from './connections.js';
 import { registerEnvironmentTools } from './environments.js';
 import { registerOrganizationTools } from './organizations.js';
+import { registerResourceTools } from './resource.js';
 import { registerWorkspaceTools } from './workspace.js';
 
 const toolsList = {
@@ -28,6 +29,14 @@ const toolsList = {
   create_environment_role: {
     name: 'create_environment_role',
     description: 'Create a new role in the current environment. The tool requires set-environment tool to be run before atleast once. The tool requires 4 parameters: roleName (name of the new role), displayName (name that will be displayed on dashboard), description (description of the role) and isDefault (boolean to indicate if the role is default or not).',
+  },
+  list_environment_scopes: {
+    name: 'list_environment_scopes',
+    description: 'List all scopes in the current environment. The tool requires set-environment tool to be run before atleast once. Show the response in tabular structured manner.',
+  },
+  create_environment_scope: {
+    name: 'create_environment_scope',
+    description: 'Create a new scope in the current environment. The tool requires set-environment tool to be run before atleast once. The tool requires 2 parameters: scopeName (name of the new scope) and description (description of the scope).',
   },
   list_workspace_members: {
     name: 'list_workspace_members',
@@ -72,7 +81,19 @@ const toolsList = {
   update_organization_settings: {
     name: 'update_organization_settings',
     description: 'Update the settings of an organization. This tool requires set-environment to be set at least once. It needs the following parameters: organizationId, feature (valid json key-value pair array) {[{\"name\":\"dir_sync\",\"enabled\":true}]}.',
-  }
+  },
+  list_mcp_servers: {
+    name: 'list_mcp_servers',
+    description: 'List all MCP servers in the current environment. This tool requires set-environment to be set at least once. It needs pageToken parameter for showing further pages. Show the response in tabular structured manner. Always ask the client if it should pull next page or not.',
+  },
+  register_mcp_server: {
+    name: 'register_mcp_server',
+    description: 'Register a new MCP server in the current environment. This tool requires set-environment to be set at least once. It needs the following parameters: name, description, url, access_token_expiry (in seconds). The url that you provide will be made available in audience of token.',
+  },
+  update_mcp_server: {
+    name: 'update_mcp_server',
+    description: 'Update an existing MCP server in the current environment. This tool requires set-environment to be set at least once. It needs the following parameters: id (id of the MCP server), name (optional), description (optional), url(optional), access_token_expiry (optional) (in seconds). The url that you provide will be made available in audience of token.',
+  },
 } as const;
 
 export type ToolKey = keyof typeof toolsList;
@@ -95,4 +116,5 @@ export function registerTools(server: McpServer) {
     registerOrganizationTools(server)
     registerWorkspaceTools(server);
     registerConnectionTools(server);
+    registerResourceTools(server);
 }
