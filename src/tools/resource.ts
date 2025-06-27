@@ -172,11 +172,10 @@ function registerMcpServerTool(server: McpServer): RegisteredTool {
           body: JSON.stringify({
             name: name,
             description: description,
-            third_party: true,
+            third_party: false,
             resource_type: 'WEB',
             resource_id: mcpServerUrl,
             access_token_expiry: accessTokenExpiry,
-            
           }),
         });
 
