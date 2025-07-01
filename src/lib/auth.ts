@@ -154,7 +154,7 @@ export const oauthAuthorizationServerHandler = async (req: Request, res: Respons
   const serverId = config.authServerId;
 
   try {
-    const response = await fetch(`${config.authIssuer}/${serverId}/.well-known/oauth-authorization-server`);
+    const response = await fetch(`${ENDPOINTS.oauthAuthorizationServer}`);
     const data = await response.json();
     res.setHeader('Content-Type', 'application/json');
     res.status(response.status).json(data);

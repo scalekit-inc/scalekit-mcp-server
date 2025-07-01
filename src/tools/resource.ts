@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { verifyScopes } from '../lib/auth.js';
 import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
-import { AuthInfo, ListResourcesResponse, Scope } from '../types/index.js';
+import { AuthInfo, CreateResourceResponse, ListResourcesResponse, Scope } from '../types/index.js';
 import { SCOPES } from '../types/scopes.js';
 import { TOOLS } from './index.js';
 
@@ -257,11 +257,12 @@ function registerMcpServerTool(server: McpServer): RegisteredTool {
         });
 
         if (res.ok) {
+            const resp = await res.json() as CreateResourceResponse;
           return {
             content: [
               {
                 type: 'text',
-                text: `MCP server "${name}" has been successfully registered with resourceMetadata: ${JSON.stringify(resourceMetadata)}.,`
+                text: `MCP server "${name}" with id ${resp.resource.id} has been successfully registered with resourceMetadata: ${JSON.stringify(resourceMetadata)}. To get oauth-authorization-server metadata data, fetch it from Fetch the oauth-authorization from https://${authInfo.selectedEnvironmentDomain}/${serverId}/.well-known/oauth-authorization-server`
               }
             ]
           };

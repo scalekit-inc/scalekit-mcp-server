@@ -224,3 +224,7 @@ export interface UpdateConnectionResponse {
 export interface EnableConnectionResponse {
   enabled: boolean;
 }
+
+export interface CreateResourceResponse {
+  resource: Resource;
+}
