@@ -42,7 +42,7 @@ export const ENDPOINTS = {
   oauthProtectedResource: `${API_BASE_URL}${OAUTH_PROTECTED_RESOURCE_PATH}`,
 };
 
-let wwwHeaderValue = `Bearer realm="OAuth", resource_metadata="${ENDPOINTS.oauthProtectedResource}`
+let wwwHeaderValue = `Bearer realm="OAuth", resource_metadata="${ENDPOINTS.oauthProtectedResource}"`
 if (config.mcpInspector){
   wwwHeaderValue = `Bearer realm="OAuth", resource_metadata="${ENDPOINTS.oauthProtectedResource}, authorization_uri="${ENDPOINTS.oauthAuthorizationServer}"`
 }
