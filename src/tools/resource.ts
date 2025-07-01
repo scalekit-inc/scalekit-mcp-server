@@ -262,7 +262,7 @@ function registerMcpServerTool(server: McpServer): RegisteredTool {
             content: [
               {
                 type: 'text',
-                text: `MCP server "${name}" with id ${resp.resource.id} has been successfully registered with resourceMetadata: ${JSON.stringify(resourceMetadata)}. To get oauth-authorization-server metadata data, fetch it from Fetch the oauth-authorization from https://${authInfo.selectedEnvironmentDomain}/${serverId}/.well-known/oauth-authorization-server`
+                text: `MCP server "${name}" with id ${resp.resource.id} has been successfully registered with resourceMetadata: ${JSON.stringify(resourceMetadata)}. To get oauth-authorization-server metadata data, fetch it from Fetch the oauth-authorization-server details from https://${authInfo.selectedEnvironmentDomain}/resources/${serverId}/.well-known/oauth-authorization-server`
               }
             ]
           };
