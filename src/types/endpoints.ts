@@ -19,8 +19,9 @@ export const ENDPOINTS = {
     createScopeById: (id:string) => `${SK_API_BASE_URL}/api/v1/environments/${id}/scopes`,
     listScopesById: (id:string) => `${SK_API_BASE_URL}/api/v1/environments/${id}/scopes`,
     listResources: `${SK_API_BASE_URL}/api/v1/resources`,
-    createResourceById: `${SK_API_BASE_URL}/api/v1/resources`,
+    createResource: `${SK_API_BASE_URL}/api/v1/resources`,
     updateResourceById: (id: string) => `${SK_API_BASE_URL}/api/v1/resources/${id}`,
+    deleteResourceProviderById: (id: string) => `${SK_API_BASE_URL}/api/v1/resources/${id}/provider:delete`,
   },
   organizations: {
     list: `${SK_API_BASE_URL}/api/v1/organizations`,
@@ -32,6 +33,9 @@ export const ENDPOINTS = {
     listOrganizationUsers: (id: string) => `${SK_API_BASE_URL}/api/v1/organizations/${id}/users`,
   },
   connections: {
+    create: `${SK_API_BASE_URL}/api/v1/connections`,
+    updateById: (id: string) => `${SK_API_BASE_URL}/api/v1/connections/${id}`,
+    enableById: (id: string) => `${SK_API_BASE_URL}/api/v1/connections/${id}:enable`,
     list: `${SK_API_BASE_URL}/api/v1/connections`,
   },
   oauthAuthorizationServer: `${AUTH_BASE_URL}/resources/${config.authServerId}${OAUTH_AUTHORIZATION_SERVER_PATH}`,

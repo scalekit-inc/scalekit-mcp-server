@@ -174,6 +174,53 @@ export interface Resource {
   refresh_token_expiry: string;
   create_time: string;
   update_time: string;
+  provider: string;
+  use_scalekit_authentication: boolean;
 }
 
 
+export interface CreateConnectionResponse {
+  connection: DetailedConnection;
+}
+
+export interface DetailedConnection {
+  id: string;
+  provider: string;
+  type: string;
+  status: string;
+  enabled: boolean;
+  debug_enabled: boolean;
+  ui_button_title: string;
+  configuration_type: string;
+  test_connection_uri: string;
+  attribute_mapping: Record<string, string>;
+  create_time: string;
+  update_time: string;
+  oidc_config: OIDCConfig;
+}
+
+export interface OIDCConfig {
+  issuer: string;
+  discovery_endpoint: string;
+  authorize_uri: string;
+  token_uri: string;
+  user_info_uri: string;
+  jwks_uri: string;
+  client_id: string;
+  client_secret: string;
+  scopes: string[];
+  token_auth_type: string;
+  redirect_uri: string;
+  pkce_enabled: boolean;
+  idp_logout_required: boolean;
+  post_logout_redirect_uri: string;
+  backchannel_logout_redirect_uri: string;
+}
+
+export interface UpdateConnectionResponse {
+  connection: DetailedConnection;
+}
+
+export interface EnableConnectionResponse {
+  enabled: boolean;
+}
