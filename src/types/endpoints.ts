@@ -44,7 +44,7 @@ export const ENDPOINTS = {
 
 let wwwHeaderValue = `Bearer realm="OAuth", resource_metadata="${ENDPOINTS.oauthProtectedResource}"`
 if (config.mcpInspector){
-  wwwHeaderValue = `Bearer realm="OAuth", resource_metadata="${ENDPOINTS.oauthProtectedResource}, authorization_uri="${ENDPOINTS.oauthAuthorizationServer}"`
+  wwwHeaderValue = `Bearer realm="OAuth", resource_metadata="${ENDPOINTS.oauthProtectedResource}", authorization_uri="${ENDPOINTS.oauthAuthorizationServer}"`
 }
 
 export const WWWHeader = {
