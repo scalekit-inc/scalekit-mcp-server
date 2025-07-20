@@ -1,11 +1,9 @@
 import { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import fetch from 'node-fetch';
 import { z } from 'zod';
-import { verifyScopes } from '../lib/auth.js';
 import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
-import { AuthInfo, GenerateAdminPortalLinkResponse, GetOrganizationResponse, ListOrganizationsResponse, ListUsersResponse } from '../types/index.js';
-import { SCOPES } from '../types/scopes.js';
+import { Environment, AuthInfo, GenerateAdminPortalLinkResponse, GetOrganizationResponse, ListOrganizationsResponse, ListUsersResponse } from '../types/index.js';
 import { TOOLS } from './index.js';
 
 interface OrgResponse {
@@ -30,59 +28,35 @@ function createOrganizationTool(server: McpServer): RegisteredTool {
     TOOLS.create_organization.name,
     TOOLS.create_organization.description,
     {
+      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
       organizationName: z.string().min(1, 'Organization name is required'),
     },
-    async ({ organizationName }, context) => {
+    async ({ environmentId, organizationName }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
-      if (!token) {
-        logger.error(`No token found in authInfo. not creating organization${organizationName}`);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'Your session is terminated, please restart your client',
-            },
-          ],
-        };
-      }
-
-      let validScopes = verifyScopes(token, [SCOPES.organizationWrite])
-      if (!validScopes) {
-        logger.error(`Invalid scopes for creating organization: ${organizationName}, token: ${token}`);
-        return {
-          content: [{ type: 'text', text: 'You do not have permission to list environments. Please add the scopes in the client and restart the client.' }],
-        };
-      }
-      
-      if (!authInfo.selectedEnvironmentId) {
-        logger.warn(`No environment selected for creating organization: ${organizationName}`);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'Use `set-environment` first.',
-            },
-          ],
-        };
-      }
 
       try {
+        // First get environment details to get the domain
+        const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const envData = (await envRes.json()) as { environment: Environment };
+        const environmentDomain = envData.environment.domain;
+
         const res = await fetch(`${ENDPOINTS.organizations.create}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${authInfo.token}`,
-            'x-env-domain': authInfo.selectedEnvironmentDomain || '',
+            Authorization: `Bearer ${token}`,
+            'x-env-domain': environmentDomain || '',
           },
           body: JSON.stringify({
-            environment_id: authInfo.selectedEnvironmentId,
+            environment_id: environmentId,
             display_name: organizationName,
           }),
         });
 
         const orgDetails = (await res.json()) as OrgResponse;
-        const orgId = orgDetails.organization.id;
 
         return {
           content: [
@@ -114,44 +88,21 @@ function listOrganizationsTool(server: McpServer): RegisteredTool {
     TOOLS.list_organizations.name,
     TOOLS.list_organizations.description,
     {
+      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
       pageToken: z.string().optional().default(''),
     },
-    async ({ pageToken }, context) => {
+    async ({ environmentId, pageToken }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
-      if (!token) {
-        logger.error(`No token found in authInfo. not listing organizations`);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'Your session is terminated, please restart your client',
-            },
-          ],
-        };
-      }
-
-      let validScopes = verifyScopes(token, [SCOPES.organizationRead])
-      if (!validScopes) {
-        logger.error(`Invalid scopes for listing organizations: ${token}`);
-        return {
-          content: [{ type: 'text', text: 'You do not have permission to list organizations. Please add the scopes in the client and restart the client.' }],
-        };
-      }
-
-      if (!authInfo.selectedEnvironmentId) {
-        logger.warn(`No environment selected for listing organizations`);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'Use `set-environment` first.',
-            },
-          ],
-        };
-      }
 
       try {
+        // First get environment details to get the domain
+        const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const envData = (await envRes.json()) as { environment: Environment };
+        const environmentDomain = envData.environment.domain;
+
         const pageSize = 30;
         const params = new URLSearchParams({
                     page_size: String(pageSize),
@@ -160,8 +111,8 @@ function listOrganizationsTool(server: McpServer): RegisteredTool {
 
         const res = await fetch(`${ENDPOINTS.organizations.list}?${params.toString()}`, {
           headers: {
-            Authorization: `Bearer ${authInfo.token}`,
-            'x-env-domain': authInfo.selectedEnvironmentDomain || '',
+            Authorization: `Bearer ${token}`,
+            'x-env-domain': environmentDomain || '',
           },
         });
 
@@ -218,48 +169,25 @@ function getOrganizationDetailsTool(server: McpServer): RegisteredTool {
     TOOLS.get_organization_details.name,
     TOOLS.get_organization_details.description,
     {
+      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
       organizationId: z.string().regex(/^org_\w+$/, 'Organization ID must start with org_'),
     },
-    async ({ organizationId }, context) => {
+    async ({ environmentId, organizationId }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
-      if (!token) {
-        logger.error(`No token found in authInfo. not getting organization details`);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'Your session is terminated, please restart your client',
-            },
-          ],
-        };
-      }
-
-      let validScopes = verifyScopes(token, [SCOPES.organizationRead])
-      if (!validScopes) {
-        logger.error(`Invalid scopes for getting organization details: ${token}`);
-        return {
-          content: [{ type: 'text', text: 'You do not have permission to get organization details. Please add the scopes in the client and restart the client.' }],
-        };
-      }
-
-      if (!authInfo.selectedEnvironmentId) {
-        logger.warn(`No environment selected for getting organization details`);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'Use `set-environment` first.',
-            },
-          ],
-        };
-      }
 
       try {
+        // First get environment details to get the domain
+        const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const envData = (await envRes.json()) as { environment: Environment };
+        const environmentDomain = envData.environment.domain;
+
         const res = await fetch(`${ENDPOINTS.organizations.getById(organizationId)}`, {
           headers: {
-            Authorization: `Bearer ${authInfo.token}`,
-            'x-env-domain': authInfo.selectedEnvironmentDomain || '',
+            Authorization: `Bearer ${token}`,
+            'x-env-domain': environmentDomain || '',
           },
         });
 
@@ -301,50 +229,27 @@ function generateAdminPortalLinkTool(server: McpServer): RegisteredTool {
     TOOLS.generate_admin_portal_link.name,
     TOOLS.generate_admin_portal_link.description,
     {
+      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
       organizationId: z.string().regex(/^org_\w+$/, 'Organization ID must start with org_'),
     },
-    async ({ organizationId }, context) => {
+    async ({ environmentId, organizationId }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
-      if (!token) {
-        logger.error(`No token found in authInfo. not generating link for ${organizationId}`);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'Your session is terminated, please restart your client',
-            },
-          ],
-        };
-      }
-
-      let validScopes = verifyScopes(token, [SCOPES.organizationWrite])
-      if (!validScopes) {
-        logger.error(`Invalid scopes for generating link for ${organizationId}, token: ${token}`);
-        return {
-          content: [{ type: 'text', text: 'You do not have permission to generate link. Please add the scopes in the client and restart the client.' }],
-        };
-      }
-      
-      if (!authInfo.selectedEnvironmentId) {
-        logger.warn(`No environment selected for generating link for ${organizationId}`);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'Use `set-environment` first.',
-            },
-          ],
-        };
-      }
 
       try {
+        // First get environment details to get the domain
+        const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const envData = (await envRes.json()) as { environment: Environment };
+        const environmentDomain = envData.environment.domain;
+
         const res = await fetch(`${ENDPOINTS.organizations.generateAdminPortalLink(organizationId)}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${authInfo.token}`,
-            'x-env-domain': authInfo.selectedEnvironmentDomain || '',
+            Authorization: `Bearer ${token}`,
+            'x-env-domain': environmentDomain || '',
           },
           body: JSON.stringify({}),
         });
@@ -380,6 +285,7 @@ function createOrganizationUserTool(server: McpServer): RegisteredTool {
     TOOLS.create_organization_user.name,
     TOOLS.create_organization_user.description,
     {
+      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
       organizationId: z.string().regex(/^org_\w+$/, 'Organization ID must start with org_'),
       email: z.string().email('Invalid email format').min(1, 'Email is required'),
       externalId: z.string().optional().default(''),
@@ -387,48 +293,24 @@ function createOrganizationUserTool(server: McpServer): RegisteredTool {
       lastName: z.string().optional().default(''),
       metadata: z.record(z.string(), z.any()).optional(),
     },
-    async ({ organizationId, email, externalId, firstName, lastName, metadata }, context) => {
+    async ({ environmentId, organizationId, email, externalId, firstName, lastName, metadata }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
-      if (!token) {
-        logger.error(`No token found in authInfo. not creating user for ${organizationId}`);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'Your session is terminated, please restart your client',
-            },
-          ],
-        };
-      }
-
-      let validScopes = verifyScopes(token, [SCOPES.organizationWrite])
-      if (!validScopes) {
-        logger.error(`Invalid scopes for creating organization user for ${organizationId}, token: ${token}`);
-        return {
-          content: [{ type: 'text', text: 'You do not have permission to create organization user. Please add the scopes in the client and restart the client.' }],
-        };
-      }
-      
-      if (!authInfo.selectedEnvironmentId) {
-        logger.warn(`No environment selected for creating organization user for ${organizationId}`);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'Use `set-environment` first.',
-            },
-          ],
-        };
-      }
 
       try {
+        // First get environment details to get the domain
+        const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const envData = (await envRes.json()) as { environment: Environment };
+        const environmentDomain = envData.environment.domain;
+
         const res = await fetch(`${ENDPOINTS.organizations.createOrganizationUser(organizationId)}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${authInfo.token}`,
-            'x-env-domain': authInfo.selectedEnvironmentDomain || '',
+            Authorization: `Bearer ${token}`,
+            'x-env-domain': environmentDomain || '',
           },
           body: JSON.stringify({
             email: email,
@@ -492,45 +374,22 @@ function listOrganizationUsersTool(server: McpServer): RegisteredTool {
     TOOLS.list_organization_users.name,
     TOOLS.list_organization_users.description,
     {
+      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
       organizationId: z.string().regex(/^org_\w+$/, 'Organization ID must start with org_'),
       pageToken: z.string().optional().default(''),
     },
-    async ({ organizationId, pageToken }, context) => {
+    async ({ environmentId, organizationId, pageToken }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
-      if (!token) {
-        logger.error(`No token found in authInfo. not listing organization users`);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'Your session is terminated, please restart your client',
-            },
-          ],
-        };
-      }
-
-      let validScopes = verifyScopes(token, [SCOPES.organizationRead])
-      if (!validScopes) {
-        logger.error(`Invalid scopes for listing organization users: ${token}`);
-        return {
-          content: [{ type: 'text', text: 'You do not have permission to list organization users. Please add the scopes in the client and restart the client.' }],
-        };
-      }
-
-      if (!authInfo.selectedEnvironmentId) {
-        logger.warn(`No environment selected for listing organization users`);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'Use `set-environment` first.',
-            },
-          ],
-        };
-      }
 
       try {
+        // First get environment details to get the domain
+        const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const envData = (await envRes.json()) as { environment: Environment };
+        const environmentDomain = envData.environment.domain;
+
         const pageSize = 100;
         const params = new URLSearchParams({
                     page_size: String(pageSize),
@@ -539,8 +398,8 @@ function listOrganizationUsersTool(server: McpServer): RegisteredTool {
 
         const res = await fetch(`${ENDPOINTS.organizations.listOrganizationUsers(organizationId)}?${params.toString()}`, {
           headers: {
-            Authorization: `Bearer ${authInfo.token}`,
-            'x-env-domain': authInfo.selectedEnvironmentDomain || '',
+            Authorization: `Bearer ${token}`,
+            'x-env-domain': environmentDomain || '',
           },
         });
 
@@ -599,6 +458,7 @@ function updateOrganizationSettingsTool(server: McpServer): RegisteredTool {
     TOOLS.update_organization_settings.name,
     TOOLS.update_organization_settings.description,
     {
+      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
       organizationId: z.string().regex(/^org_\w+$/, 'Organization ID must start with org_'),
       features: z
         .array(
@@ -609,45 +469,9 @@ function updateOrganizationSettingsTool(server: McpServer): RegisteredTool {
         )
         .min(1, 'At least one feature must be provided'),
     },
-    async ({ organizationId, features }, context) => {
+    async ({ environmentId, organizationId, features }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
-      if (!token) {
-        logger.error(`No token found in authInfo. not updating organization settings for ${organizationId}`);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'Your session is terminated, please restart your client',
-            },
-          ],
-        };
-      }
-
-      let validScopes = verifyScopes(token, [SCOPES.organizationWrite]);
-      if (!validScopes) {
-        logger.error(`Invalid scopes for updating organization settings for ${organizationId}, token: ${token}`);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'You do not have permission to update organization settings. Please add the scopes in the client and restart the client.',
-            },
-          ],
-        };
-      }
-
-      if (!authInfo.selectedEnvironmentId) {
-        logger.warn(`No environment selected for updating organization settings for ${organizationId}`);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'Use `set-environment` first.',
-            },
-          ],
-        };
-      }
 
       if (!features || features.length === 0) {
         logger.warn(`No features provided for updating organization settings for ${organizationId}`);
@@ -662,12 +486,19 @@ function updateOrganizationSettingsTool(server: McpServer): RegisteredTool {
       }
 
       try {
+        // First get environment details to get the domain
+        const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const envData = (await envRes.json()) as { environment: Environment };
+        const environmentDomain = envData.environment.domain;
+
         const res = await fetch(`${ENDPOINTS.organizations.updateSettings(organizationId)}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${authInfo.token}`,
-            'x-env-domain': authInfo.selectedEnvironmentDomain || '',
+            Authorization: `Bearer ${token}`,
+            'x-env-domain': environmentDomain || '',
           },
           body: JSON.stringify({
             features: features.map((feature) => ({

@@ -86,11 +86,13 @@ export const verifyToken = async (token: string): Promise<AuthInfo> => {
 
     return {
         token,
-        issuer: payload.iss ?? "",
-        subject: String(sub),
         clientId: payload.client_id,
         scopes: payload.scope,
-        claims: payload,
+        extra: {
+            issuer: payload.iss ?? "",
+            subject: String(sub),
+            claims: payload,
+        },
     };
 };
 
@@ -128,25 +130,6 @@ export const verifyScopes = (token: string, requiredScopes: string[]): Boolean =
     return result;
 };
 
-export const convertMetadataKeys = (metadata: any) => ({
-  issuer: metadata.issuer,
-  authorizationEndpoint: metadata.authorization_endpoint,
-  tokenEndpoint: metadata.token_endpoint,
-  introspectionEndpoint: metadata.introspection_endpoint,
-  revocationEndpoint: metadata.revocation_endpoint,
-  jwksUri: metadata.jwks_uri,
-  registrationEndpoint: metadata.registration_endpoint,
-  scopesSupported: metadata.scopes_supported,
-  responseTypesSupported: metadata.response_types_supported,
-  responseModesSupported: metadata.response_modes_supported,
-  grantTypesSupported: metadata.grant_types_supported,
-  subjectTypesSupported: metadata.subject_types_supported,
-  tokenEndpointAuthMethodsSupported: metadata.token_endpoint_auth_methods_supported,
-  tokenEndpointAuthSigningAlgValuesSupported: metadata.token_endpoint_auth_signing_alg_values_supported,
-  codeChallengeMethodsSupported: metadata.code_challenge_methods_supported,
-  requestUriParameterSupported: metadata.request_uri_parameter_supported,
-});
-
 /**
  * Proxies the authorization server metadata from the actual issuer.
  */
@@ -170,7 +153,7 @@ export const oauthAuthorizationServerHandler = async (req: Request, res: Respons
 export const oauthProtectedResourceHandler = (req: Request, res: Response) => {
   const metadata = {
     resource: config.apiBaseUrl,
-    authorization_servers: [`${config.apiBaseUrl}/.well-known/oauth-authorization-server`],
+    authorization_servers: [`${config.authIssuer}/resources/${config.authServerId}`],
     bearer_methods_supported: ['header'],
     resource_documentation: `${config.apiBaseUrl}/docs`,
     scopes_supported: getAllScopes(),

@@ -1,51 +1,27 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import express from 'express';
-import { WWWHeader } from '../types/endpoints.js';
-
-const transports: Record<string, SSEServerTransport> = {};
 
 export const setupTransportRoutes = (
   app: express.Express,
-  server: McpServer,
-  verifyToken: (token: string) => Promise<any>
+  server: McpServer
 ) => {
-  app.get('/sse', async (req, res) => {
-    const authHeader = req.headers['authorization'];
-    if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).set(WWWHeader.HeaderKey, WWWHeader.HeaderValue).end();
-    }
+  app.post('/', async (req, res) => {
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined, // stateless mode
+    });
 
-    const token = authHeader.replace('Bearer ', '');
-    let authInfo
-    try {
-      authInfo = await verifyToken(token);
-    } catch (err) {
-      return res.status(401).set(WWWHeader.HeaderKey, WWWHeader.HeaderValue).end();
-    }
-    const transport = new SSEServerTransport('/messages', res);
-    (transport as any).session = { authInfo, token };
-
-    const originalHandleMessage = transport.handleMessage.bind(transport);
-    transport.handleMessage = async (message, extra) => {
-      extra = extra || {};
-      extra.authInfo = (transport as any).session?.authInfo;
-      return await originalHandleMessage(message, extra);
-    };
-
-    transports[transport.sessionId] = transport;
-    res.on('close', () => delete transports[transport.sessionId]);
-
+    const token = (req as any).token;
+    
+    let authInfo = { token: token };
+    (req as any).auth = authInfo;
+    
     await server.connect(transport);
-  });
-
-  app.post('/messages', async (req, res) => {
-    const sessionId = String(req.query.sessionId);
-    const transport = transports[sessionId];
-    if (transport) {
-      await transport.handlePostMessage(req as any, res, req.body);
-    } else {
-      res.status(400).send('No transport found for sessionId');
+    
+    try {
+      await transport.handleRequest(req, res, req.body);
+    } catch (error) {
+      console.error('Transport error:', error);
     }
   });
 };
