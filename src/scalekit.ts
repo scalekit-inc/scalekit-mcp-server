@@ -14,10 +14,10 @@ const server = new McpServer({ name: config.serverName, version: config.serverVe
 
 const app = express();
 
-// app.use(cors({
-//   origin: [config.apiBaseUrl],
-//   credentials: true,
-// }));
+app.use(cors({
+  origin: [config.apiBaseUrl],
+  credentials: true,
+}));
 
 app.use(cors({
   origin: ['*'],
@@ -27,7 +27,7 @@ app.use(cors({
 app.get(OAUTH_PROTECTED_RESOURCE_PATH, oauthProtectedResourceHandler);
 
 app.use(express.json());
-const scalekit = new Scalekit(config.authIssuer, config.skClientId, config.skClientSecret);
+const scalekit = new Scalekit(config.skEnvUrl, config.skClientId, config.skClientSecret);
 
 (async () => {
   registerTools(server)

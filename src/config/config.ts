@@ -13,6 +13,7 @@ export const config = {
   authAudience: process.env.AUTH_AUDIENCE || '',
   logLevel: process.env.LOG_LEVEL || 'info',
   mcpInspector: process.env.MCP_INSPECTOR || false,
+  skEnvUrl: process.env.SK_ENV_URL || '',
   skClientId: process.env.SK_CLIENT_ID || '',
   skClientSecret: process.env.SK_CLIENT_SECRET || '',
 };
