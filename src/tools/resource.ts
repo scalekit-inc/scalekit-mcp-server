@@ -1,11 +1,9 @@
 import { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import fetch from 'node-fetch';
 import { z } from 'zod';
-import { verifyScopes } from '../lib/auth.js';
 import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
-import { AuthInfo, CreateResourceResponse, ListResourcesResponse, Scope } from '../types/index.js';
-import { SCOPES } from '../types/scopes.js';
+import { AuthInfo, CreateResourceResponse, Environment, ListResourcesResponse, Scope } from '../types/index.js';
 import { TOOLS } from './index.js';
 
 export function registerResourceTools(server: McpServer){
@@ -20,44 +18,20 @@ function listMcpServersTool(server: McpServer): RegisteredTool {
     TOOLS.list_mcp_servers.name,
     TOOLS.list_mcp_servers.description,
     {
+        environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
         pageToken: z.string().optional().default(''),
     },
-    async ({pageToken}, context) => {
+    async ({environmentId, pageToken}, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
-      if (!token) {
-        logger.error(`No token found in authInfo. not listing mcp servers`);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'Your session is terminated, please restart your client',
-            },
-          ],
-        };
-      }
-
-      let validScopes = verifyScopes(token, [SCOPES.environmentRead])
-      if (!validScopes) {
-        logger.error(`Invalid scopes for getting registered mcp servers: ${token}`);
-        return {
-          content: [{ type: 'text', text: 'You do not have permission to list registered mcp servers. Please add the scopes in the client and restart the client.' }],
-        };
-      }
-
-      if (!authInfo.selectedEnvironmentId) {
-        logger.warn(`No environment selected for listing registered mcp servers`);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'Use `set-environment` first.',
-            },
-          ],
-        };
-      }
 
       try {
+        const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const envData = (await envRes.json()) as { environment: Environment };
+        const environmentDomain = envData.environment.domain;
+
         const pageSize = 30;
         const params = new URLSearchParams({
                     page_size: String(pageSize),
@@ -66,8 +40,8 @@ function listMcpServersTool(server: McpServer): RegisteredTool {
                 });
         const res = await fetch(`${ENDPOINTS.environments.listResources}?${params.toString()}`, {
           headers: {
-            Authorization: `Bearer ${authInfo.token}`,
-            'x-env-domain': authInfo.selectedEnvironmentDomain || '',
+            Authorization: `Bearer ${token}`,
+            'x-env-domain': environmentDomain || '',
           },
         });
 
@@ -126,6 +100,7 @@ function registerMcpServerTool(server: McpServer): RegisteredTool {
     TOOLS.register_mcp_server.name,
     TOOLS.register_mcp_server.description,
     {
+      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
       name: z.string().min(1, 'Name is required'),
       description: z.string().optional().default(''),
       mcpServerUrl: z.string().url('Invalid URL format').min(1, 'MCP Server URL is required'),
@@ -133,48 +108,24 @@ function registerMcpServerTool(server: McpServer): RegisteredTool {
       provider: z.string().optional().default(''),
       useScalekitAuthentication: z.boolean(),
     },
-    async ({ name, description, mcpServerUrl, accessTokenExpiry, provider, useScalekitAuthentication }, context) => {
+    async ({ environmentId, name, description, mcpServerUrl, accessTokenExpiry, provider, useScalekitAuthentication }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
-      if (!token) {
-        logger.error(`No token found in authInfo. not registering mcp server`);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'Your session is terminated, please restart your client',
-            },
-          ],
-        };
-      }
 
-      let validScopes = verifyScopes(token, [SCOPES.organizationWrite])
-      if (!validScopes) {
-        logger.error(`Invalid scopes for registering mcp sevrer, token: ${token}`);
-        return {
-          content: [{ type: 'text', text: 'You do not have permission to register mcp server. Please add the scopes in the client and restart the client.' }],
-        };
-      }
-      
-      if (!authInfo.selectedEnvironmentId) {
-        logger.warn(`No environment selected for registering mcp server`);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'Use `set-environment` first.',
-            },
-          ],
-        };
-      }
+    // Get environment domain
+    const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const envData = (await envRes.json()) as { environment: Environment };
+    const environmentDomain = envData.environment.domain;
 
     // Make an API call to list environment roles and save it in a variable
     let environmentScopes = null;
     try {
-      const scopesRes = await fetch(`${ENDPOINTS.environments.listScopesById(authInfo.selectedEnvironmentId)}`, {
+      const scopesRes = await fetch(`${ENDPOINTS.environments.listScopesById(environmentId)}`, {
         headers: {
-        Authorization: `Bearer ${authInfo.token}`,
-        'x-env-domain': authInfo.selectedEnvironmentDomain || '',
+        Authorization: `Bearer ${token}`,
+        'x-env-domain': environmentDomain || '',
         },
       });
       if (scopesRes.ok) {
@@ -241,8 +192,8 @@ function registerMcpServerTool(server: McpServer): RegisteredTool {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${authInfo.token}`,
-            'x-env-domain': authInfo.selectedEnvironmentDomain || '',
+            Authorization: `Bearer ${token}`,
+            'x-env-domain': environmentDomain || '',
           },
           body: JSON.stringify({
             name: name,
@@ -252,7 +203,7 @@ function registerMcpServerTool(server: McpServer): RegisteredTool {
             resource_id: mcpServerUrl,
             access_token_expiry: accessTokenExpiry,
             resourceMetadata: JSON.stringify(resourceMetadata),
-            provider: provider,
+            provider: provider.toUpperCase(),
           }),
         });
 
@@ -262,7 +213,7 @@ function registerMcpServerTool(server: McpServer): RegisteredTool {
             content: [
               {
                 type: 'text',
-                text: `MCP server "${name}" with id ${resp.resource.id} has been successfully registered with resourceMetadata: ${JSON.stringify(resourceMetadata)}. To get oauth-authorization-server metadata data, fetch it from Fetch the oauth-authorization-server details from https://${authInfo.selectedEnvironmentDomain}/resources/${resp.resource.id}/.well-known/oauth-authorization-server`
+                text: `MCP server "${name}" with id ${resp.resource.id} has been successfully registered with resourceMetadata: ${JSON.stringify(resourceMetadata)}. To get oauth-authorization-server metadata data, fetch it from Fetch the oauth-authorization-server details from https://${environmentDomain}/resources/${resp.resource.id}/.well-known/oauth-authorization-server`
               }
             ]
           };
@@ -297,6 +248,7 @@ function updateMcpServerTool(server: McpServer): RegisteredTool {
         TOOLS.update_mcp_server.name,
         TOOLS.update_mcp_server.description,
         {
+            environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
             id: z.string().regex(/^app_\w+$/, 'Resource ID must start with app_'),
             name: z.string().optional(),
             description: z.string().optional(),
@@ -305,40 +257,16 @@ function updateMcpServerTool(server: McpServer): RegisteredTool {
             provider: z.string().optional().default(''),
             useScalekitAuthentication: z.boolean(),
         },
-        async ({ id, name, description, mcpServerUrl, accessTokenExpiry, provider, useScalekitAuthentication }, context) => {
+        async ({ environmentId, id, name, description, mcpServerUrl, accessTokenExpiry, provider, useScalekitAuthentication }, context) => {
             const authInfo = context.authInfo as AuthInfo;
             const token = authInfo?.token;
-            if (!token) {
-                logger.error(`No token found in authInfo. not updating mcp server`);
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: 'Your session is terminated, please restart your client',
-                        },
-                    ],
-                };
-            }
 
-            let validScopes = verifyScopes(token, [SCOPES.organizationWrite]);
-            if (!validScopes) {
-                logger.error(`Invalid scopes for updating mcp server, token: ${token}`);
-                return {
-                    content: [{ type: 'text', text: 'You do not have permission to update mcp server. Please add the scopes in the client and restart the client.' }],
-                };
-            }
-
-            if (!authInfo.selectedEnvironmentId) {
-                logger.warn(`No environment selected for updating mcp server`);
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: 'Use `set-environment` first.',
-                        },
-                    ],
-                };
-            }
+            // Get environment domain
+            const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const envData = (await envRes.json()) as { environment: Environment };
+            const environmentDomain = envData.environment.domain;
 
             // Build the update payload with only provided fields
             const updatePayload: Record<string, any> = {};
@@ -350,7 +278,7 @@ function updateMcpServerTool(server: McpServer): RegisteredTool {
                 updatePayload.third_party = true;
             }
             if (accessTokenExpiry !== undefined && accessTokenExpiry !== 0) updatePayload.access_token_expiry = accessTokenExpiry;
-            if (provider !== undefined && provider !== '') updatePayload.provider = provider;
+            if (provider !== undefined && provider !== '') updatePayload.provider = provider.toUpperCase();
             if (useScalekitAuthentication) {
                 // If using Scalekit authentication, set the provider to an empty string
                 updatePayload.provider = '';
@@ -372,8 +300,8 @@ function updateMcpServerTool(server: McpServer): RegisteredTool {
                     method: 'PATCH',
                     headers: {
                         'Content-Type': 'application/json',
-                        Authorization: `Bearer ${authInfo.token}`,
-                        'x-env-domain': authInfo.selectedEnvironmentDomain || '',
+                        Authorization: `Bearer ${token}`,
+                        'x-env-domain': environmentDomain || '',
                     },
                     body: JSON.stringify(updatePayload),
                 });
@@ -418,49 +346,25 @@ function switchMcpAuthToScalekitTool(server: McpServer): RegisteredTool {
         TOOLS.switch_mcp_auth_to_scalekit.name,
         TOOLS.switch_mcp_auth_to_scalekit.description,
         {
+            environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
             id: z.string().regex(/^app_\w+$/, 'Resource ID must start with app_'),
         },
-        async ({ id }, context) => {
+        async ({ environmentId, id }, context) => {
             const authInfo = context.authInfo as AuthInfo;
             const token = authInfo?.token;
-            if (!token) {
-                logger.error(`No token found in authInfo. not switching mcp auth`);
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: 'Your session is terminated, please restart your client',
-                        },
-                    ],
-                };
-            }
-
-            let validScopes = verifyScopes(token, [SCOPES.organizationWrite]);
-            if (!validScopes) {
-                logger.error(`Invalid scopes for switching mcp auth, token: ${token}`);
-                return {
-                    content: [{ type: 'text', text: 'You do not have permission to switch MCP server authentication. Please add the scopes in the client and restart the client.' }],
-                };
-            }
-
-            if (!authInfo.selectedEnvironmentId) {
-                logger.warn(`No environment selected for switching mcp auth`);
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: 'Use `set-environment` first.',
-                        },
-                    ],
-                };
-            }
 
             try {
+                const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                const envData = (await envRes.json()) as { environment: Environment };
+                const environmentDomain = envData.environment.domain;
+
                 const res = await fetch(`${ENDPOINTS.environments.deleteResourceProviderById(id)}`, {
                     method: 'PUT',
                     headers: {
-                        Authorization: `Bearer ${authInfo.token}`,
-                        'x-env-domain': authInfo.selectedEnvironmentDomain || '',
+                        Authorization: `Bearer ${token}`,
+                        'x-env-domain': environmentDomain || '',
                     },
                 });
 

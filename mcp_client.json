@@ -1,0 +1,8 @@
+{
+	"servers": {
+		"scalekit": {
+			"url": "https://mcp.scalekit.com/",
+			"type": "http"
+		}
+	}
+}
