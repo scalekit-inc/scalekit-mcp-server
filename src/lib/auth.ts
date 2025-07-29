@@ -29,7 +29,7 @@ export const oauthAuthorizationServerHandler = async (req: Request, res: Respons
  */
 export const oauthProtectedResourceHandler = (req: Request, res: Response) => {
   const metadata = {
-    resource: config.apiBaseUrl,
+    resource: `${config.apiBaseUrl}/`,
     authorization_servers: [`${config.authIssuer}/resources/${config.authServerId}`],
     bearer_methods_supported: ['header'],
     resource_documentation: `${config.apiBaseUrl}/docs`,
