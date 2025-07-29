@@ -2,11 +2,7 @@
   "mcpServers": {
     "scalekit": {
       "command": "npx", 
-      "args": [
-        "-y",
-        "mcp-remote",
-        "https://mcp.scalekit.com/"
-      ]
+      "args": ["-y", "mcp-remote", "https://mcp.scalekit.com/"]
     }
   }
 }
