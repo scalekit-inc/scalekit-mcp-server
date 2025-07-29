@@ -20,7 +20,6 @@
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "jwk-to-pem": "^2.0.5",
-    "mcp-auth": "^0.1.1",
     "node-fetch": "^3.3.2",
     "winston": "^3.10.0",
     "yaml": "^2.4.1",

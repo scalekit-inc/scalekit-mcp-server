@@ -1,11 +1,9 @@
 import { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import fetch from 'node-fetch';
 import { z } from 'zod';
-import { verifyScopes } from '../lib/auth.js';
 import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
 import { AuthInfo, CreateMemberResponse, ListMembersResponse } from '../types/index.js';
-import { SCOPES } from '../types/scopes.js';
 import { TOOLS } from './index.js';
 
 export function registerWorkspaceTools(server: McpServer){
@@ -23,25 +21,6 @@ function listWorkspaceMembers(server: McpServer): RegisteredTool {
         async ({ pageToken }, context) => {
             const authInfo = context.authInfo as AuthInfo;
             const token = authInfo?.token;
-            if (!token) {
-                logger.error(`No token found in authInfo `);
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: 'Your session is terminated, please restart your client',
-                        },
-                    ],
-                };
-            }
-
-            let validScopes = verifyScopes(token, [SCOPES.workspaceRead]);
-            if (!validScopes) {
-                logger.error(`Invalid scopes for list_workspace_members: ${token}`);
-                return {
-                    content: [{ type: 'text', text: 'You do not have permission to list memebers in workspace. Please add the scopes in the client and restart the client.' }],
-                };
-            }
 
             try {
                 const pageSize = 500;
@@ -53,7 +32,7 @@ function listWorkspaceMembers(server: McpServer): RegisteredTool {
                     page_token: String(pageToken ?? '1')
                 });
                 const res = await fetch(`${ENDPOINTS.workspaces.listMembers}?${params.toString()}`, {
-                    headers: { Authorization: `Bearer ${authInfo.token}` },
+                    headers: { Authorization: `Bearer ${token}` },
                 });
                 const data = (await res.json()) as ListMembersResponse;
 
@@ -95,31 +74,12 @@ function inviteWorkspaceMember(server: McpServer): RegisteredTool {
         async ({ email }, context) => {
             const authInfo = context.authInfo as AuthInfo;
             const token = authInfo?.token;
-            if (!token) {
-                logger.error(`No token found in authInfo `);
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: 'Your session is terminated, please restart your client',
-                        },
-                    ],
-                };
-            }
-
-            let validScopes = verifyScopes(token, [SCOPES.workspaceWrite]);
-            if (!validScopes) {
-                logger.error(`Invalid scopes for invite_workspace_member: ${token}`);
-                return {
-                    content: [{ type: 'text', text: 'You do not have permission to invite memebers in workspace. Please add the scopes in the client and restart the client.' }],
-                };
-            }
 
             try {
                 const res = await fetch(`${ENDPOINTS.workspaces.inviteMember}`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${authInfo.token}`,
+                        'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
