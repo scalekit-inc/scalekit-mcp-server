@@ -31,6 +31,27 @@ npm start
 
 The server will start and expose MCP tools for managing Scalekit resources.
 
+## Usage with Claude Desktop
+
+Configure the Claude app to use the MCP server:
+
+1. Open the Claude Desktop app, go to Settings, then Developer
+2. Click Edit Config
+3. Open the claude_desktop_config.json file
+4. Copy and paste the server config to your existing file, then save
+5. Restart Claude
+
+```json
+{
+  "mcpServers": {
+    "scalekit": {
+      "command": "npx", 
+      "args": ["-y", "mcp-remote", "https://mcp.scalekit.com/"]
+    }
+  }
+}
+```
+
 ## Available Tools
 
 ### Environment Management
@@ -232,5 +253,4 @@ This server uses OAuth Bearer token authentication. All requests (except well-kn
 - JWT for token validation
 
 ## License
-
-ISC
+See [LICENSE](./LICENSE).
