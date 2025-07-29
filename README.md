@@ -1,6 +1,6 @@
 # Scalekit MCP Server
 
-A Model Context Protocol (MCP) server that provides comprehensive tools for managing Scalekit environments, organizations, users, connections, and workspace operations.
+A Model Context Protocol (MCP) server that provides comprehensive tools for managing Scalekit environments, organizations, users, connections, and workspace operations. Built for developers who want to connect their AI tools to Scalekit context and capabilities based on simple natural language queries.
 
 ## Overview
 
@@ -16,23 +16,48 @@ This MCP server enables AI assistants to interact with Scalekit's identity and a
 - Role and scope management
 - Admin portal link generation
 
-## Installation
+## Configuration 
 
-```bash
-npm install
-npm run build
+<table>
+<tr><th>Using OAuth</th><th>Using mcp-remote proxy</th></tr>
+<tr><th align=left colspan=2>VS Code (version 1.101 or greater)</th></tr>
+<tr valign=top>
+<td>
+  
+```json
+{
+  "servers": {
+    "scalekit": {
+      "type": "http",
+      "url": "https://mcp.scalekit.com/"
+    }
+  }
+}
 ```
 
-## Usage
+</td>
+<td>
 
-```bash
-npm start
+```json
+{
+  "mcpServers": {
+    "scalekit": {
+      "command": "npx", 
+      "args": ["-y", "mcp-remote", "https://mcp.scalekit.com/"]
+    }
+  }
+}
 ```
 
-The server will start and expose MCP tools for managing Scalekit resources.
+</td>
+</tr>
+</table>
 
-## Usage with Claude Desktop
+Based on your MCP Host, configuration instructions to add Scalekit as an MCP Server can be found below:
 
+
+### Claude Desktop
+  
 Configure the Claude app to use the MCP server:
 
 1. Open the Claude Desktop app, go to Settings, then Developer
@@ -40,6 +65,49 @@ Configure the Claude app to use the MCP server:
 3. Open the claude_desktop_config.json file
 4. Copy and paste the server config to your existing file, then save
 5. Restart Claude
+
+```json
+{
+  "mcpServers": {
+    "scalekit": {
+      "command": "npx", 
+      "args": ["-y", "mcp-remote", "https://mcp.scalekit.com/"]
+    }
+  }
+}
+```
+
+### Cursor
+
+Configure Cursor to use the MCP server:
+
+1. Open Cursor, go to Settings, then Cursor Settings
+2. Select MCP on the left
+3. Click Add "New Global MCP Server" at the top right
+4. Copy and paste the server config to your existing file, then save
+5. Restart Cursor
+
+```json
+{
+  "mcpServers": {
+    "scalekit": {
+      "command": "npx", 
+      "args": ["-y", "mcp-remote", "https://mcp.scalekit.com/"]
+    }
+  }
+}
+```
+
+### Windsurf
+
+Configure Windsurf to use the MCP server:
+ 
+1. Open Windsurf, go to Settings, then Developer
+2. Click Edit Config
+3. Open the windsurf_config.json file
+4. Copy and paste the server config to your existing file, then save
+5. Restart Windsurf
+
 
 ```json
 {
@@ -240,17 +308,10 @@ Configure the Claude app to use the MCP server:
   - id (MCP server ID)
 - **Scopes**: Environment Write
 
-## Authentication
+## Authentication for MCP Server
 
-This server uses OAuth Bearer token authentication. All requests (except well-known endpoints) require a valid Bearer token in the Authorization header.
+Scalekit MCP server uses OAuth2.1 based authentication. As soon as you register Scalekit MCP Server in your MCP Host, your MCP Host will initiate an OAuth authorization workflow so that the MCP Client can get appropriate tokens to securely communicate with Scalekit's MCP Server. 
 
-## Dependencies
+> [!NOTE]
+> If you are building your own MCP Server and would like to add OAuth based authorization, you can refer to our solution Auth for MCP Servers here: https://docs.scalekit.com/guides/mcp/overview/
 
-- [@modelcontextprotocol/sdk](https://www.npmjs.com/package/@modelcontextprotocol/sdk) - MCP SDK for TypeScript/JavaScript
-- [@scalekit-sdk/node](https://www.npmjs.com/package/@scalekit-sdk/node) - Scalekit Node.js SDK
-- Express.js for HTTP server functionality
-- Winston for logging
-- JWT for token validation
-
-## License
-See [LICENSE](./LICENSE).
