@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
 import { AuthInfo, CreateConnectionResponse, EnableConnectionResponse, Environment, ListConnectionsResponse } from '../types/index.js';
+import { validateUrls } from '../validators/types.js';
 import { TOOLS } from './index.js';
 
 export function registerConnectionTools(server: McpServer){
@@ -266,21 +267,21 @@ function updateEnvironmentOidcConnectionTool(server: McpServer): RegisteredTool 
                 'ADFS',
             ]),
             oidc_config: z.object({
-                issuer: z.string().url(),
-                discovery_endpoint: z.string().url(),
-                authorize_uri: z.string().url(),
-                token_uri: z.string().url(),
-                user_info_uri: z.string().url(),
-                jwks_uri: z.string().url(),
+                issuer: z.string().min(1, 'Issuer is required'),
+                discovery_endpoint: z.string().min(1, 'Discovery endpoint is required'),
+                authorize_uri: z.string().min(1, 'Authorize URI is required'),
+                token_uri: z.string().min(1, 'Token URI is required'),
+                user_info_uri: z.string().min(1, 'User info URI is required'),
+                jwks_uri: z.string().min(1, 'JWKS URI is required'),
                 client_id: z.string(),
                 client_secret: z.string(),
                 scopes: z.array(z.string()),
                 token_auth_type: z.string(),
-                redirect_uri: z.string().url(),
+                redirect_uri: z.string().min(1, 'Redirect URI is required'),
                 pkce_enabled: z.boolean(),
                 idp_logout_required: z.boolean(),
-                post_logout_redirect_uri: z.string().url(),
-                backchannel_logout_redirect_uri: z.string().url(),
+                post_logout_redirect_uri: z.string().min(1, 'Post logout redirect URI is required'),
+                backchannel_logout_redirect_uri: z.string().min(1, 'Backchannel logout redirect URI is required'),
             }),
         },
         async (
@@ -289,6 +290,29 @@ function updateEnvironmentOidcConnectionTool(server: McpServer): RegisteredTool 
         ) => {
             const authInfo = context.authInfo as AuthInfo;
             const token = authInfo?.token;
+
+            var res = validateUrls([
+              oidc_config.issuer,
+              oidc_config.discovery_endpoint,
+              oidc_config.authorize_uri,
+              oidc_config.token_uri,
+              oidc_config.user_info_uri,
+              oidc_config.jwks_uri,
+              oidc_config.redirect_uri,
+              oidc_config.post_logout_redirect_uri,
+              oidc_config.backchannel_logout_redirect_uri,
+            ]);
+
+            if (res !== null) {
+              return {
+                content: [
+                  {
+                    type: 'text',
+                    text: res,
+                  },
+                ],
+              };
+            }
 
             try {
                 const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {

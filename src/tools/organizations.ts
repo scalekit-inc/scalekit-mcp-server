@@ -3,7 +3,8 @@ import fetch from 'node-fetch';
 import { z } from 'zod';
 import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
-import { Environment, AuthInfo, GenerateAdminPortalLinkResponse, GetOrganizationResponse, ListOrganizationsResponse, ListUsersResponse } from '../types/index.js';
+import { AuthInfo, Environment, GenerateAdminPortalLinkResponse, GetOrganizationResponse, ListOrganizationsResponse, ListUsersResponse } from '../types/index.js';
+import { validateEmail } from '../validators/types.js';
 import { TOOLS } from './index.js';
 
 interface OrgResponse {
@@ -287,7 +288,7 @@ function createOrganizationUserTool(server: McpServer): RegisteredTool {
     {
       environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
       organizationId: z.string().regex(/^org_\w+$/, 'Organization ID must start with org_'),
-      email: z.string().email('Invalid email format').min(1, 'Email is required'),
+      email: z.string().min(1, 'Email is required'),
       externalId: z.string().optional().default(''),
       firstName: z.string().optional().default(''),
       lastName: z.string().optional().default(''),
@@ -296,6 +297,18 @@ function createOrganizationUserTool(server: McpServer): RegisteredTool {
     async ({ environmentId, organizationId, email, externalId, firstName, lastName, metadata }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
+
+      var res = validateEmail(email)
+      if (res !== null) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: res,
+            },
+          ],
+        };
+      }
 
       try {
         // First get environment details to get the domain
