@@ -1,6 +1,6 @@
 # Scalekit MCP Server
 
-A Model Context Protocol (MCP) server that provides comprehensive tools for managing Scalekit environments, organizations, users, connections, and workspace operations. Built for developers who want to connect their AI tools to Scalekit context and capabilities based on simple natural language queries.
+A Model Context Protocol (MCP) server provides comprehensive tools for managing Scalekit environments, organizations, users, connections, and workspace operations. Built for developers who want to connect their AI tools to Scalekit context and capabilities based on simple natural language queries.
 
 ## Overview
 
