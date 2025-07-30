@@ -120,7 +120,7 @@ The tool requires the following parameters:
   },
   create_organization_user: {
     name: 'create_organization_user',
-    description: 'Create a new user in the selected organization. Requires environmentId parameter (format: env_<number>). It needs the following parameters: organizationId, email, externalId, firstName, lastName, metadata (valid json key-value pair).',
+    description: 'Create a new user in the selected organization. Requires environmentId parameter (format: env_<number>). It needs the following parameters: organizationId, email, role (role name). The role can be fetched by using list_environment_roles tool.',
     scopes: [SCOPES.organizationWrite],
   },
   list_organization_users: {

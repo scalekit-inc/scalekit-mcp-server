@@ -289,12 +289,9 @@ function createOrganizationUserTool(server: McpServer): RegisteredTool {
       environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
       organizationId: z.string().regex(/^org_\w+$/, 'Organization ID must start with org_'),
       email: z.string().min(1, 'Email is required'),
-      externalId: z.string().optional().default(''),
-      firstName: z.string().optional().default(''),
-      lastName: z.string().optional().default(''),
-      metadata: z.record(z.string(), z.any()).optional(),
+      role: z.string().min(1, 'Role is required'),
     },
-    async ({ environmentId, organizationId, email, externalId, firstName, lastName, metadata }, context) => {
+    async ({ environmentId, organizationId, email, role }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
 
@@ -327,13 +324,13 @@ function createOrganizationUserTool(server: McpServer): RegisteredTool {
           },
           body: JSON.stringify({
             email: email,
-            external_id: externalId,
-            user_profile: {
-              first_name: firstName,
-              last_name: lastName,
-              name: [firstName, lastName].filter(Boolean).join(' ') || undefined,
+            membership: {
+              roles: [
+                {
+                  name: role
+                }
+              ]
             },
-            metadata: metadata || {},
           }),
         });
 
@@ -349,10 +346,7 @@ function createOrganizationUserTool(server: McpServer): RegisteredTool {
                 text: `Organization user created successfully!\n` +
                       `  Email: ${email}\n` +
                       `  Organization ID: ${organizationId}\n` +
-                      (externalId ? `  External ID: ${externalId}\n` : '') +
-                      (firstName ? `  First Name: ${firstName}\n` : '') +
-                      (lastName ? `  Last Name: ${lastName}\n` : '') +
-                      (metadata ? `  Metadata: ${JSON.stringify(metadata, null, 2)}\n` : ''),
+                      `  Role: ${role}\n`,
               }
             ]
           };
@@ -442,7 +436,6 @@ function listOrganizationUsersTool(server: McpServer): RegisteredTool {
               `User ${idx + 1}:\n` +
               `  Email: ${user.email || 'N/A'}\n` +
               `  ID: ${user.id || 'N/A'}\n` +
-              `  External ID: ${user.external_id || 'N/A'}\n` +
               `  First Name: ${user.user_profile?.first_name || 'N/A'}\n` +
               `  Last Name: ${user.user_profile?.last_name || 'N/A'}\n`
           )
