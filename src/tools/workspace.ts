@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
 import { AuthInfo, CreateMemberResponse, ListMembersResponse } from '../types/index.js';
+import { validateEmail } from '../validators/types.js';
 import { TOOLS } from './index.js';
 
 export function registerWorkspaceTools(server: McpServer){
@@ -69,11 +70,23 @@ function inviteWorkspaceMember(server: McpServer): RegisteredTool {
         TOOLS.invite_workspace_member.name,
         TOOLS.invite_workspace_member.description,
         {
-            email: z.string().email('Invalid email format').min(1, 'Email is required'),
+            email: z.string().min(1, 'Email is required'),
         },
         async ({ email }, context) => {
             const authInfo = context.authInfo as AuthInfo;
             const token = authInfo?.token;
+
+            var res = validateEmail(email)
+            if (res !== null) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: res,
+                        },
+                    ],
+                };
+            }
 
             try {
                 const res = await fetch(`${ENDPOINTS.workspaces.inviteMember}`, {

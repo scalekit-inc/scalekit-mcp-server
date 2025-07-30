@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
 import { AuthInfo, CreateResourceResponse, Environment, ListResourcesResponse, Scope } from '../types/index.js';
+import { validateUrls } from '../validators/types.js';
 import { TOOLS } from './index.js';
 
 export function registerResourceTools(server: McpServer){
@@ -103,7 +104,7 @@ function registerMcpServerTool(server: McpServer): RegisteredTool {
       environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
       name: z.string().min(1, 'Name is required'),
       description: z.string().optional().default(''),
-      mcpServerUrl: z.string().url('Invalid URL format').min(1, 'MCP Server URL is required'),
+      mcpServerUrl: z.string().min(1, 'MCP Server URL is required'),
       accessTokenExpiry: z.number().int().min(1, 'Access token expiry must be a positive integer'),
       provider: z.string().optional().default(''),
       useScalekitAuthentication: z.boolean(),
@@ -111,6 +112,21 @@ function registerMcpServerTool(server: McpServer): RegisteredTool {
     async ({ environmentId, name, description, mcpServerUrl, accessTokenExpiry, provider, useScalekitAuthentication }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
+
+      var res = validateUrls([
+        mcpServerUrl,
+      ]);
+
+      if (res !== null) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: res,
+            },
+          ],
+        };
+      }
 
     // Get environment domain
     const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
@@ -252,7 +268,7 @@ function updateMcpServerTool(server: McpServer): RegisteredTool {
             id: z.string().regex(/^app_\w+$/, 'Resource ID must start with app_'),
             name: z.string().optional(),
             description: z.string().optional(),
-            mcpServerUrl: z.string().url('Invalid URL format').optional(),
+            mcpServerUrl: z.string().optional(),
             accessTokenExpiry: z.number().int().min(1, 'Access token expiry must be a positive integer').optional(),
             provider: z.string().optional().default(''),
             useScalekitAuthentication: z.boolean(),
@@ -260,6 +276,22 @@ function updateMcpServerTool(server: McpServer): RegisteredTool {
         async ({ environmentId, id, name, description, mcpServerUrl, accessTokenExpiry, provider, useScalekitAuthentication }, context) => {
             const authInfo = context.authInfo as AuthInfo;
             const token = authInfo?.token;
+
+            if (mcpServerUrl) {
+              var res = validateUrls([
+                mcpServerUrl,
+              ]);
+              if (res !== null) {
+                return {
+                  content: [
+                    {
+                      type: 'text',
+                      text: res,
+                    },
+                  ],
+                };
+              }
+            }
 
             // Get environment domain
             const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
