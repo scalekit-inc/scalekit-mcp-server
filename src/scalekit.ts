@@ -15,7 +15,7 @@ const server = new McpServer({ name: config.serverName, version: config.serverVe
 const app = express();
 
 const allowAll = cors({
-  origin: '*',
+  origin: (origin, cb) => cb(null, true),
   credentials: false,
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Mcp-Protocol-Version', 'Content-Type', 'Authorization'],
