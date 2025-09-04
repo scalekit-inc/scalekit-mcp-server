@@ -14,10 +14,17 @@ const server = new McpServer({ name: config.serverName, version: config.serverVe
 
 const app = express();
 
-app.use(cors({
-  origin: [config.apiBaseUrl],
-  credentials: true,
-}));
+const allowAll = cors({
+  origin: (origin, cb) => cb(null, true),
+  credentials: false,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Mcp-Protocol-Version', 'Content-Type', 'Authorization'],
+  exposedHeaders: ['WWW-Authenticate'],
+  maxAge: 86400,
+});
+
+app.options(/.*/, allowAll);
+app.use(allowAll);
 
 app.get(OAUTH_PROTECTED_RESOURCE_PATH, oauthProtectedResourceHandler);
 
