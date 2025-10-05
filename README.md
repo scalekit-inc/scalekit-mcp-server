@@ -1,6 +1,35 @@
-# Scalekit MCP Server
+<p align="center">
+  <a href="https://scalekit.com" target="_blank" rel="noopener noreferrer">
+    <picture>
+      <img src="https://cdn.scalekit.cloud/v1/scalekit-logo-dark.svg" height="64">
+    </picture>
+  </a>
+</p>
 
-A Model Context Protocol (MCP) server provides comprehensive tools for managing Scalekit environments, organizations, users, connections, and workspace operations. Built for developers who want to connect their AI tools to Scalekit context and capabilities based on simple natural language queries.
+<h1 align="center">
+  Scalekit MCP Server
+</h1>
+
+<p align="center">
+  <strong>Auth stack for AI apps ⚡ Official Scalekit MCP Server</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/scalekit-inc/scalekit-mcp-server/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+  <a href="https://docs.scalekit.com/guides/mcp/overview"><img src="https://img.shields.io/badge/docs-MCP%20Guide-blue" alt="MCP Documentation"></a>
+  <a href="https://mcp.scalekit.com"><img src="https://img.shields.io/badge/hosted-mcp.scalekit.com-green" alt="Hosted MCP Server"></a>
+</p>
+
+<p align="center">
+  Official Model Context Protocol server for AI agents to interact with Scalekit's identity platform through natural language
+</p>
+
+## 🚀 What This MCP Server Enables
+
+- **Natural Language Identity Management**: Manage users, organizations, and connections through AI conversations
+- **OAuth-Protected Access**: Secure AI agent interactions with enterprise authentication
+- **Comprehensive API Coverage**: Full access to Scalekit's identity and access management capabilities
+- **Multi-Client Support**: Works with Claude Desktop, VS Code, Cursor, Windsurf, and other MCP clients
 
 ## Overview
 
@@ -308,10 +337,34 @@ Configure Windsurf to use the MCP server:
   - id (MCP server ID)
 - **Scopes**: Environment Write
 
-## Authentication for MCP Server
+## Key Capabilities
 
-Scalekit MCP server uses OAuth2.1 based authentication. As soon as you register Scalekit MCP Server in your MCP Host, your MCP Host will initiate an OAuth authorization workflow so that the MCP Client can get appropriate tokens to securely communicate with Scalekit's MCP Server. 
+- **Environment Management**: Create and configure Scalekit environments
+- **Organization Operations**: Manage enterprise organizations and their settings  
+- **User Administration**: Handle user lifecycle and permissions
+- **Connection Management**: Configure SAML/OIDC identity provider connections
+- **Workspace Administration**: Manage team members and roles
+- **Portal Integration**: Generate admin portal links and manage access
+- **MCP Server Registry**: Register and configure additional MCP servers
+
+## Authentication & Security
+
+Scalekit MCP server uses OAuth 2.1 for secure authentication. When you register the MCP server with your client, an OAuth authorization workflow ensures secure, token-based communication between your AI agent and Scalekit's platform.
+
+## Additional Resources
+
+  - 📚 [Scalekit Documentation](https://docs.scalekit.com)
+  - 🔧 [API Reference](https://docs.scalekit.com/apis/)
+  - 🚀 [Full Stack Auth Quickstart](https://docs.scalekit.com/fsa/quickstart/)
+  - 💬 [Community Examples](https://github.com/orgs/scalekit-developers/repositories)
+  - ⚡ [Model Context Protocol Spec](https://modelcontextprotocol.io)
 
 > [!NOTE]
-> If you are building your own MCP Server and would like to add OAuth based authorization, you can refer to our solution Auth for MCP Servers here: https://docs.scalekit.com/guides/mcp/overview/
+> Building your own OAuth-protected MCP server? Check out our [Auth for MCP Servers guide](https://docs.scalekit.com/guides/mcp/overview/) for implementation patterns.
+
+---
+
+<p align="center">
+  Made with ❤️ by <a href="https://scalekit.com">Scalekit</a>
+</p>
 
