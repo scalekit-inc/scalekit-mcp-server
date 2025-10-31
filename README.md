@@ -362,6 +362,9 @@ Scalekit MCP server uses OAuth 2.1 for secure authentication. When you register 
 > [!NOTE]
 > Building your own OAuth-protected MCP server? Check out our [Auth for MCP Servers guide](https://docs.scalekit.com/guides/mcp/overview/) for implementation patterns.
 
+## Audited
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/scalekit-inc-scalekit-mcp-server-badge.png)](https://mseep.ai/app/scalekit-inc-scalekit-mcp-server)
+
 ---
 
 <p align="center">
