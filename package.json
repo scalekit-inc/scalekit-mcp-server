@@ -13,7 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.13.0",
+    "@modelcontextprotocol/sdk": ">=1.24.0",
     "@scalekit-sdk/node": "^2.0.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -23,7 +23,8 @@
     "node-fetch": "^3.3.2",
     "winston": "^3.10.0",
     "yaml": "^2.4.1",
-    "zod": "^3.25.57"
+    "zod": "^3.25.57",
+    "body-parser": ">=2.2.1"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
