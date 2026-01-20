@@ -1,4 +1,4 @@
-import type { AuthInfo as McpAuthInfo } from '@modelcontextprotocol/sdk/server/auth/types';
+import type { AuthInfo as McpAuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import { Request, Response } from 'express';
 import { config } from '../config/config.js';
 import { ENDPOINTS } from '../types/endpoints.js';
