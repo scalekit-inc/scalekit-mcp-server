@@ -13,6 +13,9 @@ RUN npm install
 # Copy source files
 COPY . .
 
+# Give TypeScript more heap during build
+ENV NODE_OPTIONS=--max-old-space-size=4096
+
 # Compile TypeScript to JavaScript
 RUN npm run build
 
