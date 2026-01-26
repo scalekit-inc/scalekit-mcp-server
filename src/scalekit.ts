@@ -26,6 +26,11 @@ const allowAll = cors({
 app.options(/.*/, allowAll);
 app.use(allowAll);
 
+app.get('/favicon.ico', (_req, res) => {
+  return res.redirect(302, 'https://cdn.scalekit.com/assets/mcp/scalekit-fav.png');
+});
+
+
 // Serve static files (including the HTML with favicon)
 app.use('/info', express.static('public'));
 
@@ -41,7 +46,7 @@ const scalekit = new Scalekit(config.skEnvUrl, config.skClientId, config.skClien
   app.use(async (req, res, next) => {
     try {
       // Allow public access to well-known endpoints
-      if (req.path.includes('.well-known')) {
+      if (req.path.includes('.well-known') || req.path === '/favicon.ico') {
         return next();
       }
 
