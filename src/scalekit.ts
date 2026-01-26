@@ -27,7 +27,7 @@ app.options(/.*/, allowAll);
 app.use(allowAll);
 
 // Serve static files (including the HTML with favicon)
-app.use(express.static('public'));
+app.use('/info', express.static('public'));
 
 app.get(OAUTH_PROTECTED_RESOURCE_PATH, oauthProtectedResourceHandler);
 
