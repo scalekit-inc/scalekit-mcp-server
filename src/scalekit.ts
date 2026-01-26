@@ -26,7 +26,15 @@ const allowAll = cors({
 app.options(/.*/, allowAll);
 app.use(allowAll);
 
-// Serve static files (including the HTML with favicon)
+app.get('/', (req, res, next) => {
+  if (wantsJson(req)) {
+    return next();
+  }
+  // For browsers, serves landing page from public/
+  return res.sendFile('index.html', { root: 'public' });
+});
+
+// Static assets (favicon, images, etc.)
 app.use(express.static('public'));
 
 app.get(OAUTH_PROTECTED_RESOURCE_PATH, oauthProtectedResourceHandler);
@@ -41,7 +49,7 @@ const scalekit = new Scalekit(config.skEnvUrl, config.skClientId, config.skClien
   app.use(async (req, res, next) => {
     try {
       // Allow public access to well-known endpoints
-      if (req.path.includes('.well-known')) {
+      if (isPublicRequest(req)) {
         return next();
       }
 
@@ -85,3 +93,27 @@ const scalekit = new Scalekit(config.skEnvUrl, config.skClientId, config.skClien
 
   app.listen(PORT, () => console.log(`MCP server running on http://localhost:${PORT}`));
 })();
+
+
+function wantsJson(req: express.Request) {
+  const accept = String(req.headers.accept || '').toLowerCase();
+  // If client explicitly accepts JSON, give JSON
+  if (accept.includes('application/json')) return true;
+  // If client explicitly prefers HTML, give HTML - helper page for listing verifications on marketplaces
+  if (accept.includes('text/html')) return false;
+  // For */* or empty Accept, default to JSON (CLI behavior)
+  return true;
+}
+
+const PUBLIC_PATHS = new Set<string>([
+  '/',                          // for MCP metadata or HTML (content negotiated)
+  OAUTH_PROTECTED_RESOURCE_PATH // your oauth protected resource metadata path
+]);
+
+function isPublicRequest(req: express.Request) {
+  if (PUBLIC_PATHS.has(req.path)) return true;
+  if (req.path.includes('.well-known')) return true;
+  // allow static assets like favicon etc
+  if (req.path.startsWith('/assets') || req.path.endsWith('.png') || req.path.endsWith('.ico')) return true;
+  return false;
+}
