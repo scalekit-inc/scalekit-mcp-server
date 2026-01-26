@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Scalekit, TokenValidationOptions } from '@scalekit-sdk/node';
 import cors from 'cors';
 import express from 'express';
+import https from "https";
 import { config } from './config/config.js';
 import { oauthProtectedResourceHandler } from './lib/auth.js';
 import { logger } from './lib/logger.js';
@@ -26,8 +27,13 @@ const allowAll = cors({
 app.options(/.*/, allowAll);
 app.use(allowAll);
 
-app.get('/favicon.ico', (_req, res) => {
-  return res.redirect(302, 'https://cdn.scalekit.com/assets/mcp/scalekit-fav.png');
+app.get("/favicon.ico", (_req, res) => {
+  https.get("https://cdn.scalekit.com/assets/mcp/scalekit-fav.png", (cdnRes) => {
+    res.statusCode = 200;
+    res.setHeader("Content-Type", cdnRes.headers["content-type"] || "image/png");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    cdnRes.pipe(res);
+  }).on("error", () => res.sendStatus(502));
 });
 
 
