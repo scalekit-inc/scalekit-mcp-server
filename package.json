@@ -14,7 +14,7 @@
   "license": "ISC",
   "dependencies": {
     "@modelcontextprotocol/sdk": ">=1.26.0",
-    "@scalekit-sdk/node": "^2.1.9",
+    "@scalekit-sdk/node": "^2.2.0",
     "body-parser": ">=2.2.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
