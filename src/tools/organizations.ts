@@ -101,6 +101,8 @@ function listOrganizationsTool(server: McpServer): RegisteredTool {
         const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        const envResBody = await envRes.clone().text();
+        logger.info(`Environment response status: ${envRes.status}, body: ${envResBody}`);
         const envData = (await envRes.json()) as { environment: Environment };
         const environmentDomain = envData.environment.domain;
 
