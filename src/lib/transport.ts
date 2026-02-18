@@ -4,9 +4,10 @@ import express from 'express';
 
 export const setupTransportRoutes = (
   app: express.Express,
-  server: McpServer
+  getServer: () => McpServer
 ) => {
   app.post('/', async (req, res) => {
+    const server = getServer();
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined, // stateless mode
     });

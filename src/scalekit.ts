@@ -10,7 +10,6 @@ import { registerTools, TOOLS } from './tools/index.js';
 import { OAUTH_PROTECTED_RESOURCE_PATH, WWWHeader } from './types/endpoints.js';
 
 const PORT = config.port;
-const server = new McpServer({ name: config.serverName, version: config.serverVersion });
 
 const app = express();
 
@@ -35,7 +34,11 @@ app.use(express.json());
 const scalekit = new Scalekit(config.skEnvUrl, config.skClientId, config.skClientSecret);
 
 (async () => {
-  registerTools(server)
+  const getServer = () => {
+    const server = new McpServer({ name: config.serverName, version: config.serverVersion });
+    registerTools(server);
+    return server;
+  };
   logger.info('Registered tools successfully');
 
   app.use(async (req, res, next) => {
@@ -80,7 +83,7 @@ const scalekit = new Scalekit(config.skEnvUrl, config.skClientId, config.skClien
     }
   });
 
-  setupTransportRoutes(app, server);
+  setupTransportRoutes(app, getServer);
   logger.debug('Transport routes set up completed');
 
   app.listen(PORT, () => console.log(`MCP server running on http://localhost:${PORT}`));
