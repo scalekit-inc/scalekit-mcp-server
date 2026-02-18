@@ -20,6 +20,10 @@ export const setupTransportRoutes = (
     
     try {
       await transport.handleRequest(req, res, req.body);
+      res.on('close', () => {
+        transport.close();
+        server.close();
+      });
     } catch (error) {
       console.error('Transport error:', error);
     }
