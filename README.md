@@ -45,14 +45,14 @@ This MCP server enables AI assistants to interact with Scalekit's identity and a
 - Role and scope management
 - Admin portal link generation
 
-## Configuration 
+## Configuration
 
 <table>
 <tr><th>Using OAuth</th><th>Using mcp-remote proxy</th></tr>
 <tr><th align=left colspan=2>VS Code (version 1.101 or greater)</th></tr>
 <tr valign=top>
 <td>
-  
+
 ```json
 {
   "servers": {
@@ -71,7 +71,7 @@ This MCP server enables AI assistants to interact with Scalekit's identity and a
 {
   "mcpServers": {
     "scalekit": {
-      "command": "npx", 
+      "command": "npx",
       "args": ["-y", "mcp-remote", "https://mcp.scalekit.com/"]
     }
   }
@@ -86,7 +86,7 @@ Based on your MCP Host, configuration instructions to add Scalekit as an MCP Ser
 
 
 ### Claude Desktop
-  
+
 Configure the Claude app to use the MCP server:
 
 1. Open the Claude Desktop app, go to Settings, then Developer
@@ -99,7 +99,7 @@ Configure the Claude app to use the MCP server:
 {
   "mcpServers": {
     "scalekit": {
-      "command": "npx", 
+      "command": "npx",
       "args": ["-y", "mcp-remote", "https://mcp.scalekit.com/"]
     }
   }
@@ -120,7 +120,7 @@ Configure Cursor to use the MCP server:
 {
   "mcpServers": {
     "scalekit": {
-      "command": "npx", 
+      "command": "npx",
       "args": ["-y", "mcp-remote", "https://mcp.scalekit.com/"]
     }
   }
@@ -130,7 +130,7 @@ Configure Cursor to use the MCP server:
 ### Windsurf
 
 Configure Windsurf to use the MCP server:
- 
+
 1. Open Windsurf, go to Settings, then Developer
 2. Click Edit Config
 3. Open the windsurf_config.json file
@@ -142,7 +142,7 @@ Configure Windsurf to use the MCP server:
 {
   "mcpServers": {
     "scalekit": {
-      "command": "npx", 
+      "command": "npx",
       "args": ["-y", "mcp-remote", "https://mcp.scalekit.com/"]
     }
   }
@@ -169,7 +169,7 @@ Configure Windsurf to use the MCP server:
 
 #### `create_environment_role`
 - **Description**: Create a new role in the specified environment
-- **Parameters**: 
+- **Parameters**:
   - environmentId (format: env_<number>)
   - roleName
   - displayName
@@ -206,14 +206,14 @@ Configure Windsurf to use the MCP server:
 
 #### `list_organizations`
 - **Description**: List all organizations under the specified environment
-- **Parameters**: 
+- **Parameters**:
   - environmentId (format: env_<number>)
   - pageToken
 - **Scopes**: Organization Read
 
 #### `get_organization_details`
 - **Description**: Get details of an organization by ID (e.g., org_123)
-- **Parameters**: 
+- **Parameters**:
   - environmentId (format: env_<number>)
   - organizationId
 - **Scopes**: Organization Read
@@ -225,14 +225,14 @@ Configure Windsurf to use the MCP server:
 
 #### `generate_admin_portal_link`
 - **Description**: Generate a magic link to the admin portal for the selected organization
-- **Parameters**: 
+- **Parameters**:
   - environmentId (format: env_<number>)
   - organizationId (e.g., org_123)
 - **Scopes**: Organization Write
 
 #### `create_organization_user`
 - **Description**: Create a new user in the selected organization
-- **Parameters**: 
+- **Parameters**:
   - environmentId (format: env_<number>)
   - organizationId
   - email
@@ -244,7 +244,7 @@ Configure Windsurf to use the MCP server:
 
 #### `list_organization_users`
 - **Description**: List all users in the selected organization
-- **Parameters**: 
+- **Parameters**:
   - environmentId (format: env_<number>)
   - organizationId
   - pageToken
@@ -252,7 +252,7 @@ Configure Windsurf to use the MCP server:
 
 #### `update_organization_settings`
 - **Description**: Update the settings of an organization
-- **Parameters**: 
+- **Parameters**:
   - environmentId (format: env_<number>)
   - organizationId
   - feature (JSON array of feature objects)
@@ -267,21 +267,21 @@ Configure Windsurf to use the MCP server:
 
 #### `list_organization_connections`
 - **Description**: List all connections for the selected organization
-- **Parameters**: 
+- **Parameters**:
   - environmentId (format: env_<number>)
   - organizationId (e.g., org_123)
 - **Scopes**: Organization Read
 
 #### `create_environment_oidc_connection`
 - **Description**: Create a new OIDC connection for the specified environment
-- **Parameters**: 
+- **Parameters**:
   - environmentId (format: env_<number>)
   - provider (OKTA, GOOGLE, MICROSOFT_AD, AUTH0, ONELOGIN, PING_IDENTITY, JUMPCLOUD, CUSTOM, GITHUB, GITLAB, LINKEDIN, SALESFORCE, MICROSOFT, IDP_SIMULATOR, SCALEKIT, ADFS)
 - **Scopes**: Environment Write
 
 #### `update_environment_oidc_connection`
 - **Description**: Update an existing OIDC connection for the specified environment
-- **Parameters**: 
+- **Parameters**:
   - environmentId (format: env_<number>)
   - connectionId (e.g., conn_123)
   - key_id
@@ -291,23 +291,44 @@ Configure Windsurf to use the MCP server:
 
 #### `enable_environment_connection`
 - **Description**: Enable an existing connection for the specified environment
-- **Parameters**: 
+- **Parameters**:
   - environmentId (format: env_<number>)
   - connectionId (e.g., conn_123)
+- **Scopes**: Environment Write
+
+### Client Management
+
+#### `list_clients`
+- **Description**: List OAuth clients in the specified environment, including redirect_uris, post_login_uris, and initiate_login_uri
+- **Parameters**:
+  - environmentId (format: env_<number>)
+  - pageToken (optional)
+- **Scopes**: Environment Read
+
+#### `register_redirect_uri`
+- **Description**: Register or remove a redirect URI for an OAuth client in the specified environment. Mirrors Scalekit dashboard behavior by editing post_login_uris (redirect_uris are derived server-side). Also supports raw PATCH payload via clientPatchJson.
+- **Parameters**:
+  - environmentId (format: env_<number>)
+  - clientId (e.g., skc_123)
+  - redirectUri (optional, single URL)
+  - redirectUris (optional, array of URLs)
+  - mode (optional: ADD | REPLACE | REMOVE)
+  - type (optional: ALLOWED_CALLBACK | INITIATE_LOGIN)
+  - clientPatchJson (optional: JSON object string to send as PATCH body)
 - **Scopes**: Environment Write
 
 ### MCP Server Management
 
 #### `list_mcp_servers`
 - **Description**: List all MCP servers in the specified environment
-- **Parameters**: 
+- **Parameters**:
   - environmentId (format: env_<number>)
   - pageToken
 - **Scopes**: Environment Read
 
 #### `register_mcp_server`
 - **Description**: Register a new MCP server in the specified environment
-- **Parameters**: 
+- **Parameters**:
   - environmentId (format: env_<number>)
   - name
   - description
@@ -319,7 +340,7 @@ Configure Windsurf to use the MCP server:
 
 #### `update_mcp_server`
 - **Description**: Update an existing MCP server in the specified environment
-- **Parameters**: 
+- **Parameters**:
   - environmentId (format: env_<number>)
   - id (MCP server ID)
   - name (optional)
@@ -332,7 +353,7 @@ Configure Windsurf to use the MCP server:
 
 #### `switch_mcp_auth_to_scalekit`
 - **Description**: Switch the authentication of an existing MCP server to Scalekit authentication
-- **Parameters**: 
+- **Parameters**:
   - environmentId (format: env_<number>)
   - id (MCP server ID)
 - **Scopes**: Environment Write
@@ -340,7 +361,7 @@ Configure Windsurf to use the MCP server:
 ## Key Capabilities
 
 - **Environment Management**: Create and configure Scalekit environments
-- **Organization Operations**: Manage enterprise organizations and their settings  
+- **Organization Operations**: Manage enterprise organizations and their settings
 - **User Administration**: Handle user lifecycle and permissions
 - **Connection Management**: Configure SAML/OIDC identity provider connections
 - **Workspace Administration**: Manage team members and roles
@@ -370,4 +391,3 @@ Scalekit MCP server uses OAuth 2.1 for secure authentication. When you register 
 <p align="center">
   Made with ❤️ by <a href="https://scalekit.com">Scalekit</a>
 </p>
-

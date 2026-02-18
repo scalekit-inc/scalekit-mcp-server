@@ -1,5 +1,6 @@
 import { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { SCOPES } from '../types/scopes.js';
+import { registerClientTools } from './clients.js';
 import { registerConnectionTools } from './connections.js';
 import { registerEnvironmentTools } from './environments.js';
 import { registerOrganizationTools } from './organizations.js';
@@ -152,7 +153,19 @@ The tool requires the following parameters:
     name: 'switch_mcp_auth_to_scalekit',
     description: 'Switch the authentication of an existing MCP server to Scalekit authentication. Requires environmentId parameter (format: env_<number>). It needs the following parameters: id (id of the MCP server). The tool will update the MCP server to use Scalekit authentication solution.',
     scopes: [SCOPES.environmentWrite],
-  }
+  },
+  register_redirect_uri: {
+    name: 'register_redirect_uri',
+    description:
+      'Register or remove a redirect URI for an OAuth client in the specified environment. Requires environmentId and clientId. Default behavior mirrors the dashboard UI by editing post_login_uris (redirect_uris are derived server-side). Use type=INITIATE_LOGIN to set initiate_login_uri. mode=ADD appends uniquely; mode=REPLACE overwrites; mode=REMOVE deletes the URL from the list. You can provide redirectUris (array) to add/replace/remove multiple at once.',
+    scopes: [SCOPES.environmentWrite],
+  },
+  list_clients: {
+    name: 'list_clients',
+    description:
+      'List OAuth clients in the specified environment, including redirect_uris, post_login_uris, and initiate_login_uri. Requires environmentId. It needs pageToken parameter for showing further pages. Show the response in tabular structured manner. Always ask the client if it should pull next page or not.',
+    scopes: [SCOPES.environmentRead],
+  },
 } as const;
 
 export type ToolKey = keyof typeof toolsList;
@@ -177,4 +190,5 @@ export function registerTools(server: McpServer) {
     registerWorkspaceTools(server);
     registerConnectionTools(server);
     registerResourceTools(server);
+    registerClientTools(server);
 }

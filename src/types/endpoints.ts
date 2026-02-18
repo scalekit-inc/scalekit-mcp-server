@@ -11,6 +11,11 @@ export const ENDPOINTS = {
     listMembers: `${SK_API_BASE_URL}/api/v1/members`,
     inviteMember: `${SK_API_BASE_URL}/api/v1/members`,
   },
+  clients: {
+    list: `${SK_API_BASE_URL}/api/v1/clients`,
+    getById: (id: string) => `${SK_API_BASE_URL}/api/v1/clients/${id}`,
+    updateById: (id: string) => `${SK_API_BASE_URL}/api/v1/clients/${id}`,
+  },
   environments: {
     list: `${SK_API_BASE_URL}/api/v1/environments`,
     getById: (id: string) => `${SK_API_BASE_URL}/api/v1/environments/${id}`,
