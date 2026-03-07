@@ -12,12 +12,14 @@ export const setupTransportRoutes = (
     });
 
     const token = (req as any).token;
-    
+
     let authInfo = { token: token };
     (req as any).auth = authInfo;
-    
+
+    res.on('finish', () => { transport.close().catch(() => {}); });
+
     await server.connect(transport);
-    
+
     try {
       await transport.handleRequest(req, res, req.body);
     } catch (error) {
