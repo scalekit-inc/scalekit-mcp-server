@@ -1,6 +1,7 @@
 import { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { SCOPES } from '../types/scopes.js';
 import { registerConnectionTools } from './connections.js';
+import { registerDocsTools } from './docs.js';
 import { registerEnvironmentTools } from './environments.js';
 import { registerOrganizationTools } from './organizations.js';
 import { registerResourceTools } from './resource.js';
@@ -152,7 +153,12 @@ The tool requires the following parameters:
     name: 'switch_mcp_auth_to_scalekit',
     description: 'Switch the authentication of an existing MCP server to Scalekit authentication. Requires environmentId parameter (format: env_<number>). It needs the following parameters: id (id of the MCP server). The tool will update the MCP server to use Scalekit authentication solution.',
     scopes: [SCOPES.environmentWrite],
-  }
+  },
+  search_docs: {
+    name: 'search_docs',
+    description: 'Search Scalekit documentation. Pass a natural language query (e.g. "how to set up SSO with SAML", "MCP server registration", "agent authentication connectors"). Returns the relevant documentation section.',
+    scopes: [],
+  },
 } as const;
 
 export type ToolKey = keyof typeof toolsList;
@@ -177,4 +183,5 @@ export function registerTools(server: McpServer) {
     registerWorkspaceTools(server);
     registerConnectionTools(server);
     registerResourceTools(server);
+    registerDocsTools(server);
 }

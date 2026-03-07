@@ -6,6 +6,7 @@ import { config } from './config/config.js';
 import { oauthProtectedResourceHandler } from './lib/auth.js';
 import { logger } from './lib/logger.js';
 import { setupTransportRoutes } from './lib/transport.js';
+import { registerResources } from './resources/index.js';
 import { registerTools, TOOLS } from './tools/index.js';
 import { OAUTH_PROTECTED_RESOURCE_PATH, WWWHeader } from './types/endpoints.js';
 
@@ -37,6 +38,8 @@ const scalekit = new Scalekit(config.skEnvUrl, config.skClientId, config.skClien
 (async () => {
   registerTools(server)
   logger.info('Registered tools successfully');
+  registerResources(server);
+  logger.info('Registered resources successfully');
 
   app.use(async (req, res, next) => {
     try {
