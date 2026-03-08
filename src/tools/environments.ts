@@ -3,49 +3,68 @@ import fetch from 'node-fetch';
 import { z } from 'zod';
 import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
-import { AuthInfo, Environment, Role, Scope } from '../types/index.js';
+import { AuthInfo, Client, Environment, ListClientsResponse, ListEnvironmentsResponse, Role, Scope } from '../types/index.js';
 import { TOOLS } from './index.js';
 
 export function registerEnvironmentTools(server: McpServer) {
   TOOLS.list_environments.registeredTool = listEnvironmentsTool(server)
   TOOLS.get_environment_details.registeredTool = getEnvironmentDetailsTool(server);
+  TOOLS.get_environment_credentials.registeredTool = getEnvironmentCredentialsTool(server);
   TOOLS.list_environment_roles.registeredTool = listEnvironmentRolesTool(server);
   TOOLS.create_environment_role.registeredTool = createEnvironmentRolesTool(server);
   TOOLS.create_environment_scope.registeredTool = createEnvironmentScopeTool(server);
   TOOLS.list_environment_scopes.registeredTool = listEnvironmentScopesTool(server);
+  TOOLS.list_redirect_uris.registeredTool = listRedirectUrisTool(server);
+  TOOLS.add_redirect_uri.registeredTool = addRedirectUriTool(server);
+  TOOLS.remove_redirect_uri.registeredTool = removeRedirectUriTool(server);
+  TOOLS.set_initiate_login_uri.registeredTool = setInitiateLoginUriTool(server);
+  TOOLS.remove_initiate_login_uri.registeredTool = removeInitiateLoginUriTool(server);
+  TOOLS.add_post_logout_redirect_uri.registeredTool = addPostLogoutRedirectUriTool(server);
+  TOOLS.remove_post_logout_redirect_uri.registeredTool = removePostLogoutRedirectUriTool(server);
 }
 
 function listEnvironmentsTool(server: McpServer): RegisteredTool {
   return server.tool(
     TOOLS.list_environments.name,
     TOOLS.list_environments.description,
-    async (context) => {
-      // Get token from request context
+    {
+      pageToken: z.string().optional(),
+      pageSize: z.number().int().min(1).max(100).optional().default(20),
+    },
+    async ({ pageToken, pageSize }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
-      let environments: Environment[] = [];
 
       try {
-        const res = await fetch(`${ENDPOINTS.environments.list}`, {
+        const params = new URLSearchParams({ page_size: String(pageSize) });
+        if (pageToken) params.set('page_token', pageToken);
+
+        const res = await fetch(`${ENDPOINTS.environments.list}?${params}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const data = (await res.json()) as { environments: Environment[] };
-        environments = data.environments;
-      } catch (err) {
-        logger.error('Failed to fetch environments for list-environments', { error: err, token });
-        environments = [];
-      }
+        const data = (await res.json()) as ListEnvironmentsResponse;
+        const environments = data.environments ?? [];
 
-      return {
-        content: [
-          {
+        const rows = environments.map((env) =>
+          `ID: ${env.id} | Name: ${env.display_name ?? 'N/A'} | Type: ${env.type ?? 'N/A'} | Domain: ${env.domain ?? 'N/A'} | Custom Domain: ${env.custom_domain ?? 'N/A'} | Custom Domain Status: ${env.custom_domain_status ?? 'N/A'}`
+        ).join('\n');
+
+        const pagination = data.next_page_token
+          ? `\nNext page token: ${data.next_page_token}`
+          : '\nNo more pages.';
+
+        return {
+          content: [{
             type: 'text',
-            text: `Available environments:\n${environments.map((env) =>
-              env.display_name ? `${env.id} (${env.display_name})` : env.id
-            ).join('\n')}`,
-          },
-        ],
-      };
+            text: `Total environments: ${data.total_size ?? environments.length}\n\n${rows}${pagination}`,
+          }],
+        };
+      } catch (err) {
+        logger.error('Failed to fetch environments for list_environments', { error: err });
+        return {
+          content: [{ type: 'text', text: 'Failed to fetch environments. Please try again later.' }],
+        };
+      }
     });
 }
 
@@ -82,6 +101,72 @@ function getEnvironmentDetailsTool(server: McpServer): RegisteredTool {
               text: 'Failed to fetch environment. Please check the if environment is correctly set or try again later.',
             },
           ],
+        };
+      }
+    });
+}
+
+function getEnvironmentCredentialsTool(server: McpServer): RegisteredTool {
+  return server.tool(
+    TOOLS.get_environment_credentials.name,
+    TOOLS.get_environment_credentials.description,
+    {
+      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
+    },
+    async ({ environmentId }, context) => {
+      const authInfo = context.authInfo as AuthInfo;
+      const token = authInfo?.token;
+
+      try {
+        const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const envData = (await envRes.json()) as { environment: Environment };
+        const env = envData.environment;
+        const domain = env.domain ?? '';
+
+        const clientsRes = await fetch(`${ENDPOINTS.environments.listClients}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'x-env-domain': domain,
+          },
+        });
+        const clientsData = (await clientsRes.json()) as ListClientsResponse;
+        const client: Client | undefined = clientsData.clients?.find(c => c.client_type === 'ENV') ?? clientsData.clients?.[0];
+
+        if (!client) {
+          return {
+            content: [{ type: 'text', text: 'No API client found for this environment.' }],
+          };
+        }
+
+        const secretLines = client.secrets?.length
+          ? client.secrets.map(s =>
+              `  - ID: ${s.id} | Suffix: ...${s.secret_suffix} | Status: ${s.status} | Last used: ${s.last_used_time}`
+            ).join('\n')
+          : '  None';
+
+        const text = [
+          `# ${env.display_name ?? environmentId} (${env.type ?? 'unknown'})`,
+          '',
+          'Copy this into your .env file:',
+          '',
+          `SCALEKIT_ENVIRONMENT_URL=https://${domain}`,
+          `SCALEKIT_CLIENT_ID=${client.id}`,
+          `SCALEKIT_CLIENT_SECRET=<retrieve from dashboard>`,
+          '',
+          `Active secrets (identify by suffix):`,
+          secretLines,
+          '',
+          `To get your SCALEKIT_CLIENT_SECRET, visit:`,
+          `https://app.scalekit.com > select "${env.display_name ?? environmentId}" > Settings > API Credentials`,
+        ].join('\n');
+
+        return { content: [{ type: 'text', text }] };
+      } catch (err) {
+        logger.error('Failed to fetch credentials for get_environment_credentials', { error: err });
+        return {
+          content: [{ type: 'text', text: 'Failed to fetch environment credentials. Please try again later.' }],
         };
       }
     });
@@ -324,3 +409,373 @@ function listEnvironmentScopesTool(server: McpServer): RegisteredTool {
     });
 }
 
+async function getEnvClient(token: string, environmentId: string): Promise<{ client: Client; domain: string }> {
+  const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const envData = (await envRes.json()) as { environment: Environment };
+  const domain = envData.environment.domain ?? '';
+
+  const clientsRes = await fetch(`${ENDPOINTS.environments.listClients}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'x-env-domain': domain,
+    },
+  });
+  const clientsData = (await clientsRes.json()) as ListClientsResponse;
+  const client = clientsData.clients?.find(c => c.client_type === 'ENV') ?? clientsData.clients?.[0];
+
+  if (!client) throw new Error('No ENV client found for this environment.');
+  return { client, domain };
+}
+
+function listRedirectUrisTool(server: McpServer): RegisteredTool {
+  return server.tool(
+    TOOLS.list_redirect_uris.name,
+    TOOLS.list_redirect_uris.description,
+    {
+      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
+    },
+    async ({ environmentId }, context) => {
+      const authInfo = context.authInfo as AuthInfo;
+      const token = authInfo?.token;
+
+      try {
+        const { client } = await getEnvClient(token, environmentId);
+        const uris = client.post_login_uris ?? [];
+        const postLogoutUris = client.post_logout_redirect_uris ?? [];
+
+        const initiateLoginUri = client.initiate_login_uri || '(not set)';
+        const uriList = uris.length
+          ? uris.map((u, i) => `${i + 1}. ${u}`).join('\n')
+          : '(none)';
+        const postLogoutList = postLogoutUris.length
+          ? postLogoutUris.map((u, i) => `${i + 1}. ${u}`).join('\n')
+          : '(none)';
+
+        return {
+          content: [{
+            type: 'text',
+            text: `Initiate Login URI: ${initiateLoginUri}\n\nAllowed redirect URIs (${uris.length}):\n${uriList}\n\nPost-logout redirect URIs (${postLogoutUris.length}):\n${postLogoutList}`,
+          }],
+        };
+      } catch (err) {
+        logger.error('Failed to list redirect URIs', { error: err });
+        return {
+          content: [{ type: 'text', text: 'Failed to fetch redirect URIs. Please try again later.' }],
+        };
+      }
+    });
+}
+
+function addRedirectUriTool(server: McpServer): RegisteredTool {
+  return server.tool(
+    TOOLS.add_redirect_uri.name,
+    TOOLS.add_redirect_uri.description,
+    {
+      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
+      uri: z.string().url('Must be a valid URL'),
+    },
+    async ({ environmentId, uri }, context) => {
+      const authInfo = context.authInfo as AuthInfo;
+      const token = authInfo?.token;
+
+      try {
+        const { client } = await getEnvClient(token, environmentId);
+        const existing = client.post_login_uris ?? [];
+
+        if (existing.includes(uri)) {
+          return {
+            content: [{ type: 'text', text: `URI already in the allowed list: ${uri}` }],
+          };
+        }
+
+        const updated = [...existing, uri];
+        const res = await fetch(`${ENDPOINTS.environments.updateClientById(client.id)}`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            client: { post_login_uris: updated },
+            mask: { paths: ['post_login_uris'] },
+          }),
+        });
+
+        if (!res.ok) {
+          logger.error('Failed to add redirect URI', { status: res.status });
+          return {
+            content: [{ type: 'text', text: 'Failed to add redirect URI. Please try again later.' }],
+          };
+        }
+
+        return {
+          content: [{
+            type: 'text',
+            text: `Redirect URI added successfully.\n\nUpdated list (${updated.length}):\n${updated.map((u, i) => `${i + 1}. ${u}`).join('\n')}`,
+          }],
+        };
+      } catch (err) {
+        logger.error('Failed to add redirect URI', { error: err });
+        return {
+          content: [{ type: 'text', text: 'Failed to add redirect URI. Please try again later.' }],
+        };
+      }
+    });
+}
+
+function removeRedirectUriTool(server: McpServer): RegisteredTool {
+  return server.tool(
+    TOOLS.remove_redirect_uri.name,
+    TOOLS.remove_redirect_uri.description,
+    {
+      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
+      uri: z.string().url('Must be a valid URL'),
+    },
+    async ({ environmentId, uri }, context) => {
+      const authInfo = context.authInfo as AuthInfo;
+      const token = authInfo?.token;
+
+      try {
+        const { client } = await getEnvClient(token, environmentId);
+        const existing = client.post_login_uris ?? [];
+
+        if (!existing.includes(uri)) {
+          return {
+            content: [{ type: 'text', text: `URI not found in the allowed list: ${uri}` }],
+          };
+        }
+
+        const updated = existing.filter(u => u !== uri);
+        const res = await fetch(`${ENDPOINTS.environments.updateClientById(client.id)}`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            client: { post_login_uris: updated },
+            mask: { paths: ['post_login_uris'] },
+          }),
+        });
+
+        if (!res.ok) {
+          logger.error('Failed to remove redirect URI', { status: res.status });
+          return {
+            content: [{ type: 'text', text: 'Failed to remove redirect URI. Please try again later.' }],
+          };
+        }
+
+        return {
+          content: [{
+            type: 'text',
+            text: updated.length
+              ? `Redirect URI removed successfully.\n\nUpdated list (${updated.length}):\n${updated.map((u, i) => `${i + 1}. ${u}`).join('\n')}`
+              : 'Redirect URI removed successfully. No redirect URIs remaining.',
+          }],
+        };
+      } catch (err) {
+        logger.error('Failed to remove redirect URI', { error: err });
+        return {
+          content: [{ type: 'text', text: 'Failed to remove redirect URI. Please try again later.' }],
+        };
+      }
+    });
+}
+
+function setInitiateLoginUriTool(server: McpServer): RegisteredTool {
+  return server.tool(
+    TOOLS.set_initiate_login_uri.name,
+    TOOLS.set_initiate_login_uri.description,
+    {
+      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
+      uri: z.string().url('Must be a valid URL'),
+    },
+    async ({ environmentId, uri }, context) => {
+      const authInfo = context.authInfo as AuthInfo;
+      const token = authInfo?.token;
+
+      try {
+        const { client } = await getEnvClient(token, environmentId);
+
+        const res = await fetch(`${ENDPOINTS.environments.updateClientById(client.id)}`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ initiate_login_uri: uri }),
+        });
+
+        if (!res.ok) {
+          logger.error('Failed to set initiate login URI', { status: res.status });
+          return {
+            content: [{ type: 'text', text: 'Failed to set initiate login URI. Please try again later.' }],
+          };
+        }
+
+        return {
+          content: [{ type: 'text', text: `Initiate login URI set successfully: ${uri}` }],
+        };
+      } catch (err) {
+        logger.error('Failed to set initiate login URI', { error: err });
+        return {
+          content: [{ type: 'text', text: 'Failed to set initiate login URI. Please try again later.' }],
+        };
+      }
+    });
+}
+
+function removeInitiateLoginUriTool(server: McpServer): RegisteredTool {
+  return server.tool(
+    TOOLS.remove_initiate_login_uri.name,
+    TOOLS.remove_initiate_login_uri.description,
+    {
+      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
+    },
+    async ({ environmentId }, context) => {
+      const authInfo = context.authInfo as AuthInfo;
+      const token = authInfo?.token;
+
+      try {
+        const { client } = await getEnvClient(token, environmentId);
+
+        const res = await fetch(`${ENDPOINTS.environments.updateClientById(client.id)}`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ initiate_login_uri: '' }),
+        });
+
+        if (!res.ok) {
+          logger.error('Failed to remove initiate login URI', { status: res.status });
+          return {
+            content: [{ type: 'text', text: 'Failed to remove initiate login URI. Please try again later.' }],
+          };
+        }
+
+        return {
+          content: [{ type: 'text', text: 'Initiate login URI removed successfully.' }],
+        };
+      } catch (err) {
+        logger.error('Failed to remove initiate login URI', { error: err });
+        return {
+          content: [{ type: 'text', text: 'Failed to remove initiate login URI. Please try again later.' }],
+        };
+      }
+    });
+}
+
+
+function addPostLogoutRedirectUriTool(server: McpServer): RegisteredTool {
+  return server.tool(
+    TOOLS.add_post_logout_redirect_uri.name,
+    TOOLS.add_post_logout_redirect_uri.description,
+    {
+      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
+      uri: z.string().url('Must be a valid URL'),
+    },
+    async ({ environmentId, uri }, context) => {
+      const authInfo = context.authInfo as AuthInfo;
+      const token = authInfo?.token;
+
+      try {
+        const { client } = await getEnvClient(token, environmentId);
+        const existing = client.post_logout_redirect_uris ?? [];
+
+        if (existing.includes(uri)) {
+          return {
+            content: [{ type: 'text', text: `URI already in the post-logout redirect list: ${uri}` }],
+          };
+        }
+
+        const updated = [...existing, uri];
+        const res = await fetch(`${ENDPOINTS.environments.updateClientById(client.id)}`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ post_logout_redirect_uris: updated }),
+        });
+
+        if (!res.ok) {
+          logger.error('Failed to add post-logout redirect URI', { status: res.status });
+          return {
+            content: [{ type: 'text', text: 'Failed to add post-logout redirect URI. Please try again later.' }],
+          };
+        }
+
+        return {
+          content: [{
+            type: 'text',
+            text: `Post-logout redirect URI added successfully.\n\nUpdated list (${updated.length}):\n${updated.map((u, i) => `${i + 1}. ${u}`).join('\n')}`,
+          }],
+        };
+      } catch (err) {
+        logger.error('Failed to add post-logout redirect URI', { error: err });
+        return {
+          content: [{ type: 'text', text: 'Failed to add post-logout redirect URI. Please try again later.' }],
+        };
+      }
+    });
+}
+
+function removePostLogoutRedirectUriTool(server: McpServer): RegisteredTool {
+  return server.tool(
+    TOOLS.remove_post_logout_redirect_uri.name,
+    TOOLS.remove_post_logout_redirect_uri.description,
+    {
+      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
+      uri: z.string().url('Must be a valid URL'),
+    },
+    async ({ environmentId, uri }, context) => {
+      const authInfo = context.authInfo as AuthInfo;
+      const token = authInfo?.token;
+
+      try {
+        const { client } = await getEnvClient(token, environmentId);
+        const existing = client.post_logout_redirect_uris ?? [];
+
+        if (!existing.includes(uri)) {
+          return {
+            content: [{ type: 'text', text: `URI not found in the post-logout redirect list: ${uri}` }],
+          };
+        }
+
+        const updated = existing.filter(u => u !== uri);
+        const res = await fetch(`${ENDPOINTS.environments.updateClientById(client.id)}`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ post_logout_redirect_uris: updated }),
+        });
+
+        if (!res.ok) {
+          logger.error('Failed to remove post-logout redirect URI', { status: res.status });
+          return {
+            content: [{ type: 'text', text: 'Failed to remove post-logout redirect URI. Please try again later.' }],
+          };
+        }
+
+        return {
+          content: [{
+            type: 'text',
+            text: updated.length
+              ? `Post-logout redirect URI removed successfully.\n\nUpdated list (${updated.length}):\n${updated.map((u, i) => `${i + 1}. ${u}`).join('\n')}`
+              : 'Post-logout redirect URI removed successfully. No post-logout redirect URIs remaining.',
+          }],
+        };
+      } catch (err) {
+        logger.error('Failed to remove post-logout redirect URI', { error: err });
+        return {
+          content: [{ type: 'text', text: 'Failed to remove post-logout redirect URI. Please try again later.' }],
+        };
+      }
+    });
+}

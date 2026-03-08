@@ -4,6 +4,36 @@ export interface DetailedEnvironment {
 
 }
 
+export interface ClientSecret {
+  id: string;
+  secret_suffix: string;
+  status: string;
+  last_used_time: string;
+}
+
+export interface Client {
+  id: string;
+  name: string;
+  client_type: string;
+  redirect_uris: string[];
+  post_login_uris: string[];
+  post_logout_redirect_uris: string[];
+  initiate_login_uri: string;
+  secrets: ClientSecret[];
+}
+
+export interface ListClientsResponse {
+  total_size: number;
+  clients: Client[];
+  next_page_token: string;
+}
+
+export interface ListEnvironmentsResponse {
+  next_page_token: string;
+  total_size: number;
+  environments: Environment[];
+}
+
 export interface ListOrganizationsResponse {
   next_page_token: string;
   total_size: number;
