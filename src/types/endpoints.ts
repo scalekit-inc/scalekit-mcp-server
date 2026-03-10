@@ -18,6 +18,8 @@ export const ENDPOINTS = {
     createRoleById: (id:string) => `${SK_API_BASE_URL}/api/v1/roles`,
     createScopeById: (id:string) => `${SK_API_BASE_URL}/api/v1/scopes`,
     listScopesById: (id:string) => `${SK_API_BASE_URL}/api/v1/scopes`,
+    listClients: `${SK_API_BASE_URL}/api/v1/clients`,
+    updateClientById: (id: string) => `${SK_API_BASE_URL}/api/v1/clients/${id}`,
     listResources: `${SK_API_BASE_URL}/api/v1/resources`,
     createResource: `${SK_API_BASE_URL}/api/v1/resources`,
     updateResourceById: (id: string) => `${SK_API_BASE_URL}/api/v1/resources/${id}`,

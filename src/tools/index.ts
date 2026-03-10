@@ -1,6 +1,7 @@
 import { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { SCOPES } from '../types/scopes.js';
 import { registerConnectionTools } from './connections.js';
+import { registerDocsTools } from './docs.js';
 import { registerEnvironmentTools } from './environments.js';
 import { registerOrganizationTools } from './organizations.js';
 import { registerResourceTools } from './resource.js';
@@ -9,7 +10,7 @@ import { registerWorkspaceTools } from './workspace.js';
 const toolsList = {
   list_environments: {
     name: 'list_environments',
-    description: 'List all available environments',
+    description: 'List all available environments in the workspace. Supports pagination via pageToken (a 1-based page number e.g. 1, 2, 3). Returns environment id, display name, type (PRD/DEV), domain, custom domain and status. Show the response in tabular structured manner. After fetching each page, ask if it should pull the next page.',
     scopes: [SCOPES.environmentRead],
   },
   get_environment_details: {
@@ -66,6 +67,11 @@ const toolsList = {
     name: 'generate_admin_portal_link',
     description: 'Generate a link to the admin portal for the selected organization. Requires environmentId parameter (format: env_<number>). The tool requires organization id to be passed (e.g. org_123). This link is also called admin portal magic link.',
     scopes: [SCOPES.organizationWrite],
+  },
+  get_environment_credentials: {
+    name: 'get_environment_credentials',
+    description: 'Get API credentials for a Scalekit environment. Returns SCALEKIT_ENVIRONMENT_URL, SCALEKIT_CLIENT_ID, and active secret info formatted as a .env block. The client secret is not available via API — the tool will tell the user where to find it in the dashboard.',
+    scopes: [SCOPES.environmentRead],
   },
   list_environment_connections: {
     name: 'list_environment_connections',
@@ -152,7 +158,47 @@ The tool requires the following parameters:
     name: 'switch_mcp_auth_to_scalekit',
     description: 'Switch the authentication of an existing MCP server to Scalekit authentication. Requires environmentId parameter (format: env_<number>). It needs the following parameters: id (id of the MCP server). The tool will update the MCP server to use Scalekit authentication solution.',
     scopes: [SCOPES.environmentWrite],
-  }
+  },
+  search_docs: {
+    name: 'search_docs',
+    description: 'Search Scalekit documentation by keyword. Prefer reading docs:// resources directly — use this tool only when no specific docs:// resource clearly covers the topic.',
+    scopes: [],
+  },
+  list_redirect_uris: {
+    name: 'list_redirect_uris',
+    description: 'List allowed callback URLs (redirect URIs) for the specified environment. Requires environmentId (format: env_<number>). Show the response in a structured list.',
+    scopes: [SCOPES.environmentRead],
+  },
+  add_redirect_uri: {
+    name: 'add_redirect_uri',
+    description: 'Add a callback URL to the allowed redirect URIs list for an environment. Requires environmentId (format: env_<number>) and uri (the callback URL to add).',
+    scopes: [SCOPES.environmentWrite],
+  },
+  remove_redirect_uri: {
+    name: 'remove_redirect_uri',
+    description: 'Remove a callback URL from the allowed redirect URIs list for an environment. Requires environmentId (format: env_<number>) and uri (the callback URL to remove).',
+    scopes: [SCOPES.environmentWrite],
+  },
+  set_initiate_login_uri: {
+    name: 'set_initiate_login_uri',
+    description: 'Set the initiate login URI for an environment. This is the endpoint in your app that redirects to Scalekit\'s /authorize endpoint — required to handle login scenarios not initiated from your app (IdP-initiated SSO). Requires environmentId (format: env_<number>) and uri (the full URL of your login initiation endpoint).',
+    scopes: [SCOPES.environmentWrite],
+  },
+  remove_initiate_login_uri: {
+    name: 'remove_initiate_login_uri',
+    description: 'Remove (clear) the initiate login URI for an environment. Requires environmentId (format: env_<number>).',
+    scopes: [SCOPES.environmentWrite],
+  },
+  add_post_logout_redirect_uri: {
+    name: 'add_post_logout_redirect_uri',
+    description: 'Add a URL to the post-logout redirect URIs list for an environment. After a user logs out, they are redirected to one of these URLs. Requires environmentId (format: env_<number>) and uri (the URL to add).',
+    scopes: [SCOPES.environmentWrite],
+  },
+  remove_post_logout_redirect_uri: {
+    name: 'remove_post_logout_redirect_uri',
+    description: 'Remove a URL from the post-logout redirect URIs list for an environment. Requires environmentId (format: env_<number>) and uri (the URL to remove).',
+    scopes: [SCOPES.environmentWrite],
+  },
 } as const;
 
 export type ToolKey = keyof typeof toolsList;
@@ -177,4 +223,5 @@ export function registerTools(server: McpServer) {
     registerWorkspaceTools(server);
     registerConnectionTools(server);
     registerResourceTools(server);
+    registerDocsTools(server);
 }

@@ -6,11 +6,33 @@ import { config } from './config/config.js';
 import { oauthProtectedResourceHandler } from './lib/auth.js';
 import { logger } from './lib/logger.js';
 import { setupTransportRoutes } from './lib/transport.js';
+import { registerResources } from './resources/index.js';
 import { registerTools, TOOLS } from './tools/index.js';
 import { OAUTH_PROTECTED_RESOURCE_PATH, WWWHeader } from './types/endpoints.js';
 
 const PORT = config.port;
-const server = new McpServer({ name: config.serverName, version: config.serverVersion });
+const server = new McpServer(
+  { name: config.serverName, version: config.serverVersion },
+  {
+    instructions: `You have access to Scalekit's documentation via docs:// resources and a search_docs tool.
+
+PREFERRED WORKFLOW:
+1. For any question about how to use Scalekit, start by reading docs://index to understand which section covers the topic.
+2. Then read the specific docs:// resource (e.g. docs://mcp-auth, docs://full-stack-auth, docs://agent-auth).
+3. Only use search_docs if no docs:// resource clearly covers the topic.
+
+Available resources:
+- docs://index — start here to navigate all documentation
+- docs://mcp-auth — add authentication to MCP servers (OAuth 2.1, DCR)
+- docs://full-stack-auth — user login, sessions, RBAC for web apps
+- docs://agent-auth — AI agent OAuth token vault, connectors, tool calling
+- docs://sso-scim — enterprise SSO (SAML/OIDC) and directory sync
+- docs://quickstart — getting started guides
+- docs://api-sdk — API reference, SDK methods, webhooks
+- docs://integrations — Okta, Google, Microsoft, and other IdP guides
+- docs://m2m-auth — machine-to-machine auth, client credentials, API keys`,
+  }
+);
 
 const app = express();
 
@@ -37,6 +59,8 @@ const scalekit = new Scalekit(config.skEnvUrl, config.skClientId, config.skClien
 (async () => {
   registerTools(server)
   logger.info('Registered tools successfully');
+  registerResources(server);
+  logger.info('Registered resources successfully');
 
   app.use(async (req, res, next) => {
     try {
