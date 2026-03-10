@@ -481,7 +481,7 @@ function addRedirectUriTool(server: McpServer): RegisteredTool {
       const token = authInfo?.token;
 
       try {
-        const { client } = await getEnvClient(token, environmentId);
+        const { client, domain } = await getEnvClient(token, environmentId);
         const existing = client.post_login_uris ?? [];
 
         if (existing.includes(uri)) {
@@ -496,11 +496,9 @@ function addRedirectUriTool(server: McpServer): RegisteredTool {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
+            'x-env-domain': domain,
           },
-          body: JSON.stringify({
-            client: { post_login_uris: updated },
-            mask: { paths: ['post_login_uris'] },
-          }),
+          body: JSON.stringify({ post_login_uris: updated }),
         });
 
         if (!res.ok) {
@@ -538,7 +536,7 @@ function removeRedirectUriTool(server: McpServer): RegisteredTool {
       const token = authInfo?.token;
 
       try {
-        const { client } = await getEnvClient(token, environmentId);
+        const { client, domain } = await getEnvClient(token, environmentId);
         const existing = client.post_login_uris ?? [];
 
         if (!existing.includes(uri)) {
@@ -553,11 +551,9 @@ function removeRedirectUriTool(server: McpServer): RegisteredTool {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
+            'x-env-domain': domain,
           },
-          body: JSON.stringify({
-            client: { post_login_uris: updated },
-            mask: { paths: ['post_login_uris'] },
-          }),
+          body: JSON.stringify({ post_login_uris: updated }),
         });
 
         if (!res.ok) {
@@ -597,13 +593,14 @@ function setInitiateLoginUriTool(server: McpServer): RegisteredTool {
       const token = authInfo?.token;
 
       try {
-        const { client } = await getEnvClient(token, environmentId);
+        const { client, domain } = await getEnvClient(token, environmentId);
 
         const res = await fetch(`${ENDPOINTS.environments.updateClientById(client.id)}`, {
           method: 'PATCH',
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
+            'x-env-domain': domain,
           },
           body: JSON.stringify({ initiate_login_uri: uri }),
         });
@@ -639,13 +636,14 @@ function removeInitiateLoginUriTool(server: McpServer): RegisteredTool {
       const token = authInfo?.token;
 
       try {
-        const { client } = await getEnvClient(token, environmentId);
+        const { client, domain } = await getEnvClient(token, environmentId);
 
         const res = await fetch(`${ENDPOINTS.environments.updateClientById(client.id)}`, {
           method: 'PATCH',
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
+            'x-env-domain': domain,
           },
           body: JSON.stringify({ initiate_login_uri: '' }),
         });
@@ -683,7 +681,7 @@ function addPostLogoutRedirectUriTool(server: McpServer): RegisteredTool {
       const token = authInfo?.token;
 
       try {
-        const { client } = await getEnvClient(token, environmentId);
+        const { client, domain } = await getEnvClient(token, environmentId);
         const existing = client.post_logout_redirect_uris ?? [];
 
         if (existing.includes(uri)) {
@@ -698,6 +696,7 @@ function addPostLogoutRedirectUriTool(server: McpServer): RegisteredTool {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
+            'x-env-domain': domain,
           },
           body: JSON.stringify({ post_logout_redirect_uris: updated }),
         });
@@ -737,7 +736,7 @@ function removePostLogoutRedirectUriTool(server: McpServer): RegisteredTool {
       const token = authInfo?.token;
 
       try {
-        const { client } = await getEnvClient(token, environmentId);
+        const { client, domain } = await getEnvClient(token, environmentId);
         const existing = client.post_logout_redirect_uris ?? [];
 
         if (!existing.includes(uri)) {
@@ -752,6 +751,7 @@ function removePostLogoutRedirectUriTool(server: McpServer): RegisteredTool {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
+            'x-env-domain': domain,
           },
           body: JSON.stringify({ post_logout_redirect_uris: updated }),
         });
