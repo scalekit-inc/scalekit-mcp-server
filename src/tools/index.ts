@@ -161,7 +161,7 @@ The tool requires the following parameters:
   },
   search_docs: {
     name: 'search_docs',
-    description: 'Search Scalekit documentation. Pass a natural language query (e.g. "how to set up SSO with SAML", "MCP server registration", "agent authentication connectors"). Returns the relevant documentation section.',
+    description: 'Search Scalekit documentation by keyword. Prefer reading docs:// resources directly — use this tool only when no specific docs:// resource clearly covers the topic.',
     scopes: [],
   },
   list_redirect_uris: {
