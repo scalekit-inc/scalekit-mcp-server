@@ -10,7 +10,7 @@ import { registerWorkspaceTools } from './workspace.js';
 const toolsList = {
   list_environments: {
     name: 'list_environments',
-    description: 'List all available environments in the workspace. Supports pagination via pageToken. Returns environment id, display name, type (PRD/DEV), domain, custom domain and status. Show the response in tabular structured manner. After fetching each page, ask if it should pull the next page.',
+    description: 'List all available environments in the workspace. Supports pagination via pageToken (a 1-based page number e.g. 1, 2, 3). Returns environment id, display name, type (PRD/DEV), domain, custom domain and status. Show the response in tabular structured manner. After fetching each page, ask if it should pull the next page.',
     scopes: [SCOPES.environmentRead],
   },
   get_environment_details: {

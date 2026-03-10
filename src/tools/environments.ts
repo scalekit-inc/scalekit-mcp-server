@@ -28,7 +28,7 @@ function listEnvironmentsTool(server: McpServer): RegisteredTool {
     TOOLS.list_environments.name,
     TOOLS.list_environments.description,
     {
-      pageToken: z.string().optional(),
+      pageToken: z.string().optional().describe('1-based page number (1, 2, 3...). Defaults to first page if not provided.'),
       pageSize: z.number().int().min(1).max(100).optional().default(20),
     },
     async ({ pageToken, pageSize }, context) => {
