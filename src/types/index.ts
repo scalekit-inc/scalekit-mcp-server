@@ -138,6 +138,11 @@ export interface ListConnectedAccountsResponse {
   prev_page_token: string;
 }
 
+export interface CreateConnectedAccountMagicLinkResponse {
+  link: string;
+  expiry: string;
+}
+
 export interface Role {
   id: string;
   name: string;

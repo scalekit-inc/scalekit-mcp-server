@@ -40,6 +40,7 @@ export const ENDPOINTS = {
     enableById: (id: string) => `${SK_API_BASE_URL}/api/v1/connections/${id}:enable`,
     list: `${SK_API_BASE_URL}/api/v1/connections`,
     connectedAccountsList: `${SK_API_BASE_URL}/api/v1/connected_accounts`,
+    connectedAccountsMagicLink: `${SK_API_BASE_URL}/api/v1/connected_accounts/magic_link`,
   },
   oauthAuthorizationServer: `${AUTH_BASE_URL}/resources/${config.authServerId}${OAUTH_AUTHORIZATION_SERVER_PATH}`,
   oauthProtectedResource: `${API_BASE_URL}${OAUTH_PROTECTED_RESOURCE_PATH}`,

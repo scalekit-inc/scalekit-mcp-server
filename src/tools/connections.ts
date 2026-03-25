@@ -8,6 +8,7 @@ import {
   AuthInfo,
   ConnectedAccount,
   Connection,
+  CreateConnectedAccountMagicLinkResponse,
   CreateConnectionResponse,
   EnableConnectionResponse,
   ListConnectedAccountsResponse,
@@ -57,6 +58,7 @@ function formatConnectedAccounts(accounts: ConnectedAccount[]): string {
 export function registerConnectionTools(server: McpServer){
   TOOLS.list_environment_connections.registeredTool = getEnvironmentConnectionsTool(server)
   TOOLS.list_connected_accounts.registeredTool = listConnectedAccountsTool(server);
+  TOOLS.create_connected_account_magic_link.registeredTool = createConnectedAccountMagicLinkTool(server);
   TOOLS.list_organization_connections.registeredTool = getOrganizationConnectionsTool(server);
   TOOLS.create_environment_oidc_connection.registeredTool = createEnvironmentOidcConnectionTool(server);
   TOOLS.update_environment_oidc_connection.registeredTool = updateEnvironmentOidcConnectionTool(server);
@@ -146,6 +148,57 @@ function listConnectedAccountsTool(server: McpServer): RegisteredTool {
             {
               type: 'text',
               text: 'Failed to list connected accounts. Please try again later.',
+            },
+          ],
+        };
+      }
+    }
+  );
+}
+
+function createConnectedAccountMagicLinkTool(server: McpServer): RegisteredTool {
+  return server.tool(
+    TOOLS.create_connected_account_magic_link.name,
+    TOOLS.create_connected_account_magic_link.description,
+    {
+      environmentId: environmentIdSchema,
+      identifier: z.string().min(1, 'identifier is required'),
+      connector: z.string().min(1, 'connector is required'),
+    },
+    async ({ environmentId, identifier, connector }, context) => {
+      const authInfo = context.authInfo as AuthInfo;
+      const token = authInfo?.token;
+
+      try {
+        const environmentDomain = await getEnvironmentDomain(token, environmentId);
+        const res = await fetch(`${ENDPOINTS.connections.connectedAccountsMagicLink}`, {
+          method: 'POST',
+          headers: envHeaders(token, environmentDomain, { 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ identifier, connector }),
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          logger.error(`Failed to create connected account magic link: ${res.status} ${errorText}`);
+          throw new Error(`Failed to create connected account magic link: ${res.statusText}`);
+        }
+
+        const data = (await res.json()) as CreateConnectedAccountMagicLinkResponse;
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Magic link created.\nlink: ${data.link}\nexpiry: ${data.expiry}`,
+            },
+          ],
+        };
+      } catch (error) {
+        logger.error('Failed to create connected account magic link', error);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'Failed to create connected account magic link. Please try again later.',
             },
           ],
         };
