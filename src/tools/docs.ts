@@ -27,7 +27,7 @@ function searchSections(query: string, text: string): { score: number; text: str
 }
 
 export function registerDocsTools(server: McpServer) {
-  server.tool(
+  TOOLS.search_docs.registeredTool = server.tool(
     TOOLS.search_docs.name,
     TOOLS.search_docs.description,
     { query: z.string().min(1) },

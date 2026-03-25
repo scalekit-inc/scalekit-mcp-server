@@ -117,6 +117,32 @@ export interface ListConnectionsResponse {
   connections: Connection[];
 }
 
+/** OAuth / connector account linked at environment scope (distinct from IdP connections). */
+export interface ConnectedAccount {
+  id: string;
+  identifier: string;
+  provider: string;
+  status: string;
+  authorization_type: string;
+  updated_at: string;
+  connector: string;
+  connection_id: string;
+  token_expires_at?: string;
+  last_used_at?: string;
+}
+
+export interface ListConnectedAccountsResponse {
+  connected_accounts: ConnectedAccount[];
+  total_size: number;
+  next_page_token: string;
+  prev_page_token: string;
+}
+
+export interface CreateConnectedAccountMagicLinkResponse {
+  link: string;
+  expiry: string;
+}
+
 export interface Role {
   id: string;
   name: string;

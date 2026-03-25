@@ -1,10 +1,11 @@
 import { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import fetch from 'node-fetch';
 import { z } from 'zod';
+import { envHeaders, getEnvironmentDomain } from '../lib/api.js';
 import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
-import { AuthInfo, Environment, GenerateAdminPortalLinkResponse, GetOrganizationResponse, ListOrganizationsResponse, ListUsersResponse } from '../types/index.js';
-import { validateEmail } from '../validators/types.js';
+import { AuthInfo, GenerateAdminPortalLinkResponse, GetOrganizationResponse, ListOrganizationsResponse, ListUsersResponse } from '../types/index.js';
+import { environmentIdSchema, organizationIdSchema, validateEmail } from '../validators/types.js';
 import { TOOLS } from './index.js';
 
 interface OrgResponse {
@@ -29,7 +30,7 @@ function createOrganizationTool(server: McpServer): RegisteredTool {
     TOOLS.create_organization.name,
     TOOLS.create_organization.description,
     {
-      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
+      environmentId: environmentIdSchema,
       organizationName: z.string().min(1, 'Organization name is required'),
     },
     async ({ environmentId, organizationName }, context) => {
@@ -37,20 +38,11 @@ function createOrganizationTool(server: McpServer): RegisteredTool {
       const token = authInfo?.token;
 
       try {
-        // First get environment details to get the domain
-        const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const envData = (await envRes.json()) as { environment: Environment };
-        const environmentDomain = envData.environment.domain;
+        const environmentDomain = await getEnvironmentDomain(token, environmentId);
 
         const res = await fetch(`${ENDPOINTS.organizations.create}`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-            'x-env-domain': environmentDomain || '',
-          },
+          headers: envHeaders(token, environmentDomain, { 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             environment_id: environmentId,
             display_name: organizationName,
@@ -89,7 +81,7 @@ function listOrganizationsTool(server: McpServer): RegisteredTool {
     TOOLS.list_organizations.name,
     TOOLS.list_organizations.description,
     {
-      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
+      environmentId: environmentIdSchema,
       pageToken: z.string().optional().default(''),
     },
     async ({ environmentId, pageToken }, context) => {
@@ -97,13 +89,7 @@ function listOrganizationsTool(server: McpServer): RegisteredTool {
       const token = authInfo?.token;
 
       try {
-        // First get environment details to get the domain
-        const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const envData = (await envRes.json()) as { environment: Environment };
-        const environmentDomain = envData.environment.domain;
-
+        const environmentDomain = await getEnvironmentDomain(token, environmentId);
         const pageSize = 30;
         const params = new URLSearchParams({
                     page_size: String(pageSize),
@@ -111,10 +97,7 @@ function listOrganizationsTool(server: McpServer): RegisteredTool {
                 });
 
         const res = await fetch(`${ENDPOINTS.organizations.list}?${params.toString()}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'x-env-domain': environmentDomain || '',
-          },
+          headers: envHeaders(token, environmentDomain),
         });
 
         const data = await res.json() as ListOrganizationsResponse;
@@ -170,26 +153,18 @@ function getOrganizationDetailsTool(server: McpServer): RegisteredTool {
     TOOLS.get_organization_details.name,
     TOOLS.get_organization_details.description,
     {
-      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
-      organizationId: z.string().regex(/^org_\w+$/, 'Organization ID must start with org_'),
+      environmentId: environmentIdSchema,
+      organizationId: organizationIdSchema,
     },
     async ({ environmentId, organizationId }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
 
       try {
-        // First get environment details to get the domain
-        const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const envData = (await envRes.json()) as { environment: Environment };
-        const environmentDomain = envData.environment.domain;
+        const environmentDomain = await getEnvironmentDomain(token, environmentId);
 
         const res = await fetch(`${ENDPOINTS.organizations.getById(organizationId)}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'x-env-domain': environmentDomain || '',
-          },
+          headers: envHeaders(token, environmentDomain),
         });
 
         if (!res.ok) {
@@ -230,28 +205,19 @@ function generateAdminPortalLinkTool(server: McpServer): RegisteredTool {
     TOOLS.generate_admin_portal_link.name,
     TOOLS.generate_admin_portal_link.description,
     {
-      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
-      organizationId: z.string().regex(/^org_\w+$/, 'Organization ID must start with org_'),
+      environmentId: environmentIdSchema,
+      organizationId: organizationIdSchema,
     },
     async ({ environmentId, organizationId }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
 
       try {
-        // First get environment details to get the domain
-        const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const envData = (await envRes.json()) as { environment: Environment };
-        const environmentDomain = envData.environment.domain;
+        const environmentDomain = await getEnvironmentDomain(token, environmentId);
 
         const res = await fetch(`${ENDPOINTS.organizations.generateAdminPortalLink(organizationId)}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-            'x-env-domain': environmentDomain || '',
-          },
+          headers: envHeaders(token, environmentDomain, { 'Content-Type': 'application/json' }),
           body: JSON.stringify({}),
         });
 
@@ -286,8 +252,8 @@ function createOrganizationUserTool(server: McpServer): RegisteredTool {
     TOOLS.create_organization_user.name,
     TOOLS.create_organization_user.description,
     {
-      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
-      organizationId: z.string().regex(/^org_\w+$/, 'Organization ID must start with org_'),
+      environmentId: environmentIdSchema,
+      organizationId: organizationIdSchema,
       email: z.string().min(1, 'Email is required'),
       role: z.string().min(1, 'Role is required'),
     },
@@ -295,33 +261,17 @@ function createOrganizationUserTool(server: McpServer): RegisteredTool {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
 
-      var res = validateEmail(email)
-      if (res !== null) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: res,
-            },
-          ],
-        };
+      const emailError = validateEmail(email);
+      if (emailError !== null) {
+        return { content: [{ type: 'text', text: emailError }] };
       }
 
       try {
-        // First get environment details to get the domain
-        const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const envData = (await envRes.json()) as { environment: Environment };
-        const environmentDomain = envData.environment.domain;
+        const environmentDomain = await getEnvironmentDomain(token, environmentId);
 
         const res = await fetch(`${ENDPOINTS.organizations.createOrganizationUser(organizationId)}`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-            'x-env-domain': environmentDomain || '',
-          },
+          headers: envHeaders(token, environmentDomain, { 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             email: email,
             membership: {
@@ -335,32 +285,20 @@ function createOrganizationUserTool(server: McpServer): RegisteredTool {
         });
 
         if (!res.ok) {
-          throw new Error(`Failed to create organization user: ${res.statusText}`);
+          logger.error('Failed to create organization user', { status: res.statusText });
+          return {
+            content: [{ type: 'text', text: 'Failed to create organization user. Please try again.' }],
+          };
         }
 
-        if (res.ok) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `Organization user created successfully!\n` +
-                      `  Email: ${email}\n` +
-                      `  Organization ID: ${organizationId}\n` +
-                      `  Role: ${role}\n`,
-              }
-            ]
-          };
-        } else {
-          logger.error(`Failed to create organization user: ${res.statusText}`);
-          return {
-            content: [
-              {
-                type: 'text',
-                text: 'Failed to create organization user. Please try again.',
-              },
-            ],
-          };
-        }
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Organization user created successfully!\n  Email: ${email}\n  Organization ID: ${organizationId}\n  Role: ${role}\n`,
+            },
+          ],
+        };
       } catch (error) {
         logger.error(`Failed to create organization user`, error);
         return {
@@ -381,8 +319,8 @@ function listOrganizationUsersTool(server: McpServer): RegisteredTool {
     TOOLS.list_organization_users.name,
     TOOLS.list_organization_users.description,
     {
-      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
-      organizationId: z.string().regex(/^org_\w+$/, 'Organization ID must start with org_'),
+      environmentId: environmentIdSchema,
+      organizationId: organizationIdSchema,
       pageToken: z.string().optional().default(''),
     },
     async ({ environmentId, organizationId, pageToken }, context) => {
@@ -390,13 +328,7 @@ function listOrganizationUsersTool(server: McpServer): RegisteredTool {
       const token = authInfo?.token;
 
       try {
-        // First get environment details to get the domain
-        const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const envData = (await envRes.json()) as { environment: Environment };
-        const environmentDomain = envData.environment.domain;
-
+        const environmentDomain = await getEnvironmentDomain(token, environmentId);
         const pageSize = 100;
         const params = new URLSearchParams({
                     page_size: String(pageSize),
@@ -404,10 +336,7 @@ function listOrganizationUsersTool(server: McpServer): RegisteredTool {
                 });
 
         const res = await fetch(`${ENDPOINTS.organizations.listOrganizationUsers(organizationId)}?${params.toString()}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'x-env-domain': environmentDomain || '',
-          },
+          headers: envHeaders(token, environmentDomain),
         });
 
         const data = await res.json() as ListUsersResponse;
@@ -464,8 +393,8 @@ function updateOrganizationSettingsTool(server: McpServer): RegisteredTool {
     TOOLS.update_organization_settings.name,
     TOOLS.update_organization_settings.description,
     {
-      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
-      organizationId: z.string().regex(/^org_\w+$/, 'Organization ID must start with org_'),
+      environmentId: environmentIdSchema,
+      organizationId: organizationIdSchema,
       features: z
         .array(
           z.object({
@@ -479,33 +408,12 @@ function updateOrganizationSettingsTool(server: McpServer): RegisteredTool {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
 
-      if (!features || features.length === 0) {
-        logger.warn(`No features provided for updating organization settings for ${organizationId}`);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'No features provided to update. Please provide valid features.',
-            },
-          ],
-        };
-      }
-
       try {
-        // First get environment details to get the domain
-        const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const envData = (await envRes.json()) as { environment: Environment };
-        const environmentDomain = envData.environment.domain;
+        const environmentDomain = await getEnvironmentDomain(token, environmentId);
 
         const res = await fetch(`${ENDPOINTS.organizations.updateSettings(organizationId)}`, {
           method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-            'x-env-domain': environmentDomain || '',
-          },
+          headers: envHeaders(token, environmentDomain, { 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             features: features.map((feature) => ({
               name: feature.name,

@@ -56,7 +56,7 @@ function listWorkspaceMembers(server: McpServer): RegisteredTool {
                     content: [
                         {
                             type: 'text',
-                            text: 'Failed to fetch workspace members. Please check try again later.',
+                            text: 'Failed to fetch workspace members. Please try again later.',
                         },
                     ],
                 };
@@ -133,7 +133,7 @@ function inviteWorkspaceMember(server: McpServer): RegisteredTool {
                     content: [
                         {
                             type: 'text',
-                            text: 'Failed to invite workspace members. Please check try again later.',
+                            text: 'Failed to invite workspace members. Please try again later.',
                         },
                     ],
                 };

@@ -78,6 +78,18 @@ const toolsList = {
     description: 'List all connection for the specified environment. Requires environmentId parameter (format: env_<number>).',
     scopes: [SCOPES.environmentRead],
   },
+  list_connected_accounts: {
+    name: 'list_connected_accounts',
+    description:
+      'List connected accounts (OAuth connector accounts such as Gmail, Notion) at the environment level. Requires environmentId (format: env_<number>). Supports pagination: pageSize (default 20) and optional pageToken from the previous response. Show the response in tabular structured manner. After each page, ask whether to fetch the next page.',
+    scopes: [SCOPES.environmentRead],
+  },
+  create_connected_account_magic_link: {
+    name: 'create_connected_account_magic_link',
+    description:
+      'Create a magic link to connect an OAuth connector account (e.g. Notion, Gmail) at the environment level. Requires environmentId (format: env_<number>), identifier (a friendly name), and connector (e.g. "notion"). Returns link and expiry.',
+    scopes: [SCOPES.environmentWrite],
+  },
   list_organization_connections: {
     name: 'list_organization_connections',
     description: 'List all connection for the selected organization. Requires environmentId parameter (format: env_<number>). The tool also requires organization id to be passed (e.g. org_123) ',
