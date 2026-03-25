@@ -1,11 +1,28 @@
 import { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import fetch from 'node-fetch';
 import { z } from 'zod';
+import { envHeaders, getEnvironmentDomain } from '../lib/api.js';
 import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
-import { AuthInfo, CreateConnectionResponse, EnableConnectionResponse, Environment, ListConnectionsResponse } from '../types/index.js';
-import { validateUrls } from '../validators/types.js';
+import { AuthInfo, Connection, CreateConnectionResponse, EnableConnectionResponse, ListConnectionsResponse } from '../types/index.js';
+import { connectionIdSchema, environmentIdSchema, oidcProviderSchema, organizationIdSchema, validateUrls } from '../validators/types.js';
 import { TOOLS } from './index.js';
+
+function formatConnections(connections: Connection[]): string {
+  return connections
+    .map(conn => {
+      const details = [
+        `id: ${conn.id}`,
+        conn.provider ? `provider: ${conn.provider}` : null,
+        conn.type ? `type: ${conn.type}` : null,
+        conn.status ? `status: ${conn.status}` : null,
+        typeof conn.enabled === 'boolean' ? `enabled: ${conn.enabled}` : null,
+        conn.organization_name ? `organization_name: ${conn.organization_name}` : null,
+      ].filter(Boolean).join('\n  ');
+      return `- {\n  ${details}\n}`;
+    })
+    .join('\n');
+}
 
 export function registerConnectionTools(server: McpServer){
   TOOLS.list_environment_connections.registeredTool = getEnvironmentConnectionsTool(server)
@@ -19,63 +36,28 @@ function getEnvironmentConnectionsTool(server: McpServer): RegisteredTool {
   return server.tool(
     TOOLS.list_environment_connections.name,
     TOOLS.list_environment_connections.description,
-    {
-      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
-    },
+    { environmentId: environmentIdSchema },
     async ({ environmentId }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
 
       try {
-        const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const envData = (await envRes.json()) as { environment: Environment };
-        const environmentDomain = envData.environment.domain;
-
-        const params = new URLSearchParams({
-                    include: 'all',
-                });
+        const environmentDomain = await getEnvironmentDomain(token, environmentId);
+        const params = new URLSearchParams({ include: 'all' });
         const res = await fetch(`${ENDPOINTS.connections.list}?${params.toString()}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'x-env-domain': environmentDomain || '',
-          },
+          headers: envHeaders(token, environmentDomain),
         });
 
-        if (!res.ok) {
-          throw new Error(`Failed to fetch connection details: ${res.statusText}`);
-        }
+        if (!res.ok) throw new Error(`Failed to fetch connection details: ${res.statusText}`);
 
-        const connections = await res.json() as ListConnectionsResponse;
-
+        const data = (await res.json()) as ListConnectionsResponse;
         return {
-          content: [
-            {
-              type: 'text',
-              text: `Connections:\n${connections.connections.map(conn => {
-            const details = [
-              `id: ${conn.id}`,
-              conn.provider ? `provider: ${conn.provider}` : null,
-              conn.type ? `type: ${conn.type}` : null,
-              conn.status ? `status: ${conn.status}` : null,
-              typeof conn.enabled === 'boolean' ? `enabled: ${conn.enabled}` : null,
-              conn.organization_name ? `organization_name: ${conn.organization_name}` : null,
-            ].filter(Boolean).join('\n  ');
-            return `- {\n  ${details}\n}`;
-              }).join('\n')}`,
-            }
-          ]
+          content: [{ type: 'text', text: `Connections:\n${formatConnections(data.connections)}` }],
         };
       } catch (error) {
-        logger.error(`Failed to fetch connection details`, error);
+        logger.error('Failed to fetch connection details', error);
         return {
-          content: [
-            {
-              type: 'text',
-              text: 'Failed to fetch connection details. Please try again later.',
-            },
-          ],
+          content: [{ type: 'text', text: 'Failed to fetch connection details. Please try again later.' }],
         };
       }
     }
@@ -87,64 +69,30 @@ function getOrganizationConnectionsTool(server: McpServer): RegisteredTool {
     TOOLS.list_organization_connections.name,
     TOOLS.list_organization_connections.description,
     {
-        environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
-        organizationId: z.string().regex(/^org_\w+$/, 'Organization ID must start with org_'),
+      environmentId: environmentIdSchema,
+      organizationId: organizationIdSchema,
     },
-    async ({environmentId, organizationId}, context) => {
+    async ({ environmentId, organizationId }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
 
       try {
-        const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const envData = (await envRes.json()) as { environment: Environment };
-        const environmentDomain = envData.environment.domain;
-
-        const params = new URLSearchParams({
-                    organizationId: organizationId,
-                    include: 'all',
-                });
+        const environmentDomain = await getEnvironmentDomain(token, environmentId);
+        const params = new URLSearchParams({ organizationId, include: 'all' });
         const res = await fetch(`${ENDPOINTS.connections.list}?${params.toString()}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'x-env-domain': environmentDomain || '',
-          },
+          headers: envHeaders(token, environmentDomain),
         });
 
-        if (!res.ok) {
-          throw new Error(`Failed to fetch connection details: ${res.statusText}`);
-        }
+        if (!res.ok) throw new Error(`Failed to fetch connection details: ${res.statusText}`);
 
-        const connections = await res.json() as ListConnectionsResponse;
-
+        const data = (await res.json()) as ListConnectionsResponse;
         return {
-          content: [
-            {
-              type: 'text',
-              text: `Connections:\n${connections.connections.map(conn => {
-            const details = [
-              `id: ${conn.id}`,
-              conn.provider ? `provider: ${conn.provider}` : null,
-              conn.type ? `type: ${conn.type}` : null,
-              conn.status ? `status: ${conn.status}` : null,
-              typeof conn.enabled === 'boolean' ? `enabled: ${conn.enabled}` : null,
-              conn.organization_name ? `organization_name: ${conn.organization_name}` : null,
-            ].filter(Boolean).join('\n  ');
-            return `- {\n  ${details}\n}`;
-              }).join('\n')}`,
-            }
-          ]
+          content: [{ type: 'text', text: `Connections:\n${formatConnections(data.connections)}` }],
         };
       } catch (error) {
-        logger.error(`Failed to fetch connection details`, error);
+        logger.error('Failed to fetch connection details', error);
         return {
-          content: [
-            {
-              type: 'text',
-              text: 'Failed to fetch connection details. Please try again later.',
-            },
-          ],
+          content: [{ type: 'text', text: 'Failed to fetch connection details. Please try again later.' }],
         };
       }
     }
@@ -152,55 +100,29 @@ function getOrganizationConnectionsTool(server: McpServer): RegisteredTool {
 }
 
 function createEnvironmentOidcConnectionTool(server: McpServer): RegisteredTool {
-    return server.tool(
-        TOOLS.create_environment_oidc_connection.name,
-        TOOLS.create_environment_oidc_connection.description,
-        {
-            environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
-            provider: z.enum([
-                'OKTA',
-                'GOOGLE',
-                'MICROSOFT_AD',
-                'AUTH0',
-                'ONELOGIN',
-                'PING_IDENTITY',
-                'JUMPCLOUD',
-                'CUSTOM',
-                'GITHUB',
-                'GITLAB',
-                'LINKEDIN',
-                'SALESFORCE',
-                'MICROSOFT',
-                'IDP_SIMULATOR',
-                'SCALEKIT',
-                'ADFS',
-            ]),
-        },
-        async ({ environmentId, provider }, context) => {
-            const authInfo = context.authInfo as AuthInfo;
-            const token = authInfo?.token;
+  return server.tool(
+    TOOLS.create_environment_oidc_connection.name,
+    TOOLS.create_environment_oidc_connection.description,
+    {
+      environmentId: environmentIdSchema,
+      provider: oidcProviderSchema,
+    },
+    async ({ environmentId, provider }, context) => {
+      const authInfo = context.authInfo as AuthInfo;
+      const token = authInfo?.token;
+      const type = 'OIDC';
 
-            const type = "OIDC";
+      try {
+        const environmentDomain = await getEnvironmentDomain(token, environmentId);
 
-            try {
-                const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                const envData = (await envRes.json()) as { environment: Environment };
-                const environmentDomain = envData.environment.domain;
-
-                const res = await fetch(`${ENDPOINTS.connections.create}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`,
-                        'x-env-domain': environmentDomain || '',
-                    },
-                    body: JSON.stringify({
-                        provider: provider,
-                        type: type,
-                    }),
-                });
+        const res = await fetch(`${ENDPOINTS.connections.create}`, {
+          method: 'POST',
+          headers: envHeaders(token, environmentDomain, { 'Content-Type': 'application/json' }),
+          body: JSON.stringify({
+            provider: provider,
+            type: type,
+          }),
+        });
 
                 if (!res.ok) {
                     const errorText = await res.text();
@@ -244,28 +166,11 @@ function updateEnvironmentOidcConnectionTool(server: McpServer): RegisteredTool 
         TOOLS.update_environment_oidc_connection.name,
         TOOLS.update_environment_oidc_connection.description,
         {
-            environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
-            connectionId: z.string().regex(/^conn_\w+$/, 'Connection ID must start with conn_'),
-            type: z.enum(['OIDC']),
-            key_id: z.string().min(1, 'Key ID is required'),
-            provider: z.enum([
-                'OKTA',
-                'GOOGLE',
-                'MICROSOFT_AD',
-                'AUTH0',
-                'ONELOGIN',
-                'PING_IDENTITY',
-                'JUMPCLOUD',
-                'CUSTOM',
-                'GITHUB',
-                'GITLAB',
-                'LINKEDIN',
-                'SALESFORCE',
-                'MICROSOFT',
-                'IDP_SIMULATOR',
-                'SCALEKIT',
-                'ADFS',
-            ]),
+          environmentId: environmentIdSchema,
+          connectionId: connectionIdSchema,
+          type: z.enum(['OIDC']),
+          key_id: z.string().min(1, 'Key ID is required'),
+          provider: oidcProviderSchema,
             oidc_config: z.object({
                 issuer: z.string().min(1, 'Issuer is required'),
                 discovery_endpoint: z.string().min(1, 'Discovery endpoint is required'),
@@ -315,21 +220,13 @@ function updateEnvironmentOidcConnectionTool(server: McpServer): RegisteredTool 
             }
 
             try {
-                const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                const envData = (await envRes.json()) as { environment: Environment };
-                const environmentDomain = envData.environment.domain;
+                const environmentDomain = await getEnvironmentDomain(token, environmentId);
 
                 const res = await fetch(
                     `${ENDPOINTS.connections.updateById(connectionId)}`,
                     {
                         method: 'PATCH',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${token}`,
-                            'x-env-domain': environmentDomain || '',
-                        },
+                        headers: envHeaders(token, environmentDomain, { 'Content-Type': 'application/json' }),
                         body: JSON.stringify({
                             type,
                             key_id: key_id.toUpperCase(),
@@ -378,33 +275,25 @@ function updateEnvironmentOidcConnectionTool(server: McpServer): RegisteredTool 
 }
 
 function enableConnectionTool(server: McpServer): RegisteredTool {
-    return server.tool(
-        TOOLS.enable_environment_connection.name,
-        TOOLS.enable_environment_connection.description,
-        {
-            environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
-            connection_id: z.string().regex(/^conn_\w+$/, 'Connection ID must start with conn_'),
-        },
-        async ({ environmentId, connection_id }, context) => {
-            const authInfo = context.authInfo as AuthInfo;
-            const token = authInfo?.token;
+  return server.tool(
+    TOOLS.enable_environment_connection.name,
+    TOOLS.enable_environment_connection.description,
+    {
+      environmentId: environmentIdSchema,
+      connection_id: connectionIdSchema,
+    },
+    async ({ environmentId, connection_id }, context) => {
+      const authInfo = context.authInfo as AuthInfo;
+      const token = authInfo?.token;
 
-            try {
-                const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                const envData = (await envRes.json()) as { environment: Environment };
-                const environmentDomain = envData.environment.domain;
+      try {
+        const environmentDomain = await getEnvironmentDomain(token, environmentId);
 
-                const res = await fetch(
+        const res = await fetch(
                     `${ENDPOINTS.connections.enableById(connection_id)}`,
                     {
                         method: 'PATCH',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${token}`,
-                            'x-env-domain': environmentDomain || '',
-                        }
+                        headers: envHeaders(token, environmentDomain, { 'Content-Type': 'application/json' }),
                     }
                 );
 

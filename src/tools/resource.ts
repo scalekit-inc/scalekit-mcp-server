@@ -1,10 +1,11 @@
 import { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import fetch from 'node-fetch';
 import { z } from 'zod';
+import { envHeaders, getEnvironmentDomain } from '../lib/api.js';
 import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
-import { AuthInfo, CreateResourceResponse, Environment, ListResourcesResponse, Scope } from '../types/index.js';
-import { validateUrls } from '../validators/types.js';
+import { AuthInfo, CreateResourceResponse, ListResourcesResponse, Scope } from '../types/index.js';
+import { environmentIdSchema, resourceIdSchema, validateUrls } from '../validators/types.js';
 import { TOOLS } from './index.js';
 
 export function registerResourceTools(server: McpServer){
@@ -19,20 +20,15 @@ function listMcpServersTool(server: McpServer): RegisteredTool {
     TOOLS.list_mcp_servers.name,
     TOOLS.list_mcp_servers.description,
     {
-        environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
-        pageToken: z.string().optional().default(''),
+      environmentId: environmentIdSchema,
+      pageToken: z.string().optional().default(''),
     },
-    async ({environmentId, pageToken}, context) => {
+    async ({ environmentId, pageToken }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
 
       try {
-        const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const envData = (await envRes.json()) as { environment: Environment };
-        const environmentDomain = envData.environment.domain;
-
+        const environmentDomain = await getEnvironmentDomain(token, environmentId);
         const pageSize = 30;
         const params = new URLSearchParams({
                     page_size: String(pageSize),
@@ -40,10 +36,7 @@ function listMcpServersTool(server: McpServer): RegisteredTool {
                     resource_type: 'MCP_SERVER',
                 });
         const res = await fetch(`${ENDPOINTS.environments.listResources}?${params.toString()}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'x-env-domain': environmentDomain || '',
-          },
+          headers: envHeaders(token, environmentDomain),
         });
 
         if (!res.ok) {
@@ -82,14 +75,9 @@ function listMcpServersTool(server: McpServer): RegisteredTool {
           ],
         };
       } catch (error) {
-        logger.error(`Failed to fetch connection details`, error);
+        logger.error('Failed to fetch MCP servers', error);
         return {
-          content: [
-            {
-              type: 'text',
-              text: 'Failed to fetch connection details. Please try again later.',
-            },
-          ],
+          content: [{ type: 'text', text: 'Failed to fetch MCP servers. Please try again later.' }],
         };
       }
     }
@@ -101,7 +89,7 @@ function registerMcpServerTool(server: McpServer): RegisteredTool {
     TOOLS.register_mcp_server.name,
     TOOLS.register_mcp_server.description,
     {
-      environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
+      environmentId: environmentIdSchema,
       name: z.string().min(1, 'Name is required'),
       description: z.string().optional().default(''),
       mcpServerUrl: z.string().min(1, 'MCP Server URL is required'),
@@ -113,36 +101,18 @@ function registerMcpServerTool(server: McpServer): RegisteredTool {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
 
-      var res = validateUrls([
-        mcpServerUrl,
-      ]);
-
-      if (res !== null) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: res,
-            },
-          ],
-        };
+      const urlError = validateUrls([mcpServerUrl]);
+      if (urlError !== null) {
+        return { content: [{ type: 'text', text: urlError }] };
       }
 
-    // Get environment domain
-    const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const envData = (await envRes.json()) as { environment: Environment };
-    const environmentDomain = envData.environment.domain;
+      const environmentDomain = await getEnvironmentDomain(token, environmentId);
 
     // Make an API call to list environment roles and save it in a variable
     let environmentScopes = null;
     try {
       const scopesRes = await fetch(`${ENDPOINTS.environments.listScopesById(environmentId)}`, {
-        headers: {
-        Authorization: `Bearer ${token}`,
-        'x-env-domain': environmentDomain || '',
-        },
+        headers: envHeaders(token, environmentDomain),
       });
       if (scopesRes.ok) {
         let data = await scopesRes.json() as { scopes: Scope[] };
@@ -206,11 +176,7 @@ function registerMcpServerTool(server: McpServer): RegisteredTool {
       try {
         const res = await fetch(`${ENDPOINTS.environments.createResource}`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-            'x-env-domain': environmentDomain || '',
-          },
+          headers: envHeaders(token, environmentDomain, { 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             name: name,
             description: description,
@@ -264,41 +230,27 @@ function updateMcpServerTool(server: McpServer): RegisteredTool {
         TOOLS.update_mcp_server.name,
         TOOLS.update_mcp_server.description,
         {
-            environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
-            id: z.string().regex(/^app_\w+$/, 'Resource ID must start with app_'),
-            name: z.string().optional(),
-            description: z.string().optional(),
-            mcpServerUrl: z.string().optional(),
-            accessTokenExpiry: z.number().int().min(1, 'Access token expiry must be a positive integer').optional(),
-            provider: z.string().optional().default(''),
-            useScalekitAuthentication: z.boolean(),
+          environmentId: environmentIdSchema,
+          id: resourceIdSchema,
+          name: z.string().optional(),
+          description: z.string().optional(),
+          mcpServerUrl: z.string().optional(),
+          accessTokenExpiry: z.number().int().min(1, 'Access token expiry must be a positive integer').optional(),
+          provider: z.string().optional().default(''),
+          useScalekitAuthentication: z.boolean(),
         },
         async ({ environmentId, id, name, description, mcpServerUrl, accessTokenExpiry, provider, useScalekitAuthentication }, context) => {
             const authInfo = context.authInfo as AuthInfo;
             const token = authInfo?.token;
 
             if (mcpServerUrl) {
-              var res = validateUrls([
-                mcpServerUrl,
-              ]);
-              if (res !== null) {
-                return {
-                  content: [
-                    {
-                      type: 'text',
-                      text: res,
-                    },
-                  ],
-                };
+              const urlError = validateUrls([mcpServerUrl]);
+              if (urlError !== null) {
+                return { content: [{ type: 'text', text: urlError }] };
               }
             }
 
-            // Get environment domain
-            const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            const envData = (await envRes.json()) as { environment: Environment };
-            const environmentDomain = envData.environment.domain;
+            const environmentDomain = await getEnvironmentDomain(token, environmentId);
 
             // Build the update payload with only provided fields
             const updatePayload: Record<string, any> = {};
@@ -330,11 +282,7 @@ function updateMcpServerTool(server: McpServer): RegisteredTool {
             try {
                 const res = await fetch(`${ENDPOINTS.environments.updateResourceById(id)}`, {
                     method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`,
-                        'x-env-domain': environmentDomain || '',
-                    },
+                    headers: envHeaders(token, environmentDomain, { 'Content-Type': 'application/json' }),
                     body: JSON.stringify(updatePayload),
                 });
 
@@ -378,26 +326,19 @@ function switchMcpAuthToScalekitTool(server: McpServer): RegisteredTool {
         TOOLS.switch_mcp_auth_to_scalekit.name,
         TOOLS.switch_mcp_auth_to_scalekit.description,
         {
-            environmentId: z.string().regex(/^env_\w+$/, 'Environment ID must start with env_'),
-            id: z.string().regex(/^app_\w+$/, 'Resource ID must start with app_'),
+          environmentId: environmentIdSchema,
+          id: resourceIdSchema,
         },
         async ({ environmentId, id }, context) => {
             const authInfo = context.authInfo as AuthInfo;
             const token = authInfo?.token;
 
             try {
-                const envRes = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                const envData = (await envRes.json()) as { environment: Environment };
-                const environmentDomain = envData.environment.domain;
+                const environmentDomain = await getEnvironmentDomain(token, environmentId);
 
                 const res = await fetch(`${ENDPOINTS.environments.deleteResourceProviderById(id)}`, {
                     method: 'PUT',
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        'x-env-domain': environmentDomain || '',
-                    },
+                    headers: envHeaders(token, environmentDomain),
                 });
 
                 if (res.ok) {
