@@ -78,6 +78,12 @@ const toolsList = {
     description: 'List all connection for the specified environment. Requires environmentId parameter (format: env_<number>).',
     scopes: [SCOPES.environmentRead],
   },
+  list_connected_accounts: {
+    name: 'list_connected_accounts',
+    description:
+      'List connected accounts (OAuth connector accounts such as Gmail, Notion) at the environment level. Requires environmentId (format: env_<number>). Supports pagination: pageSize (default 20) and optional pageToken from the previous response. Show the response in tabular structured manner. After each page, ask whether to fetch the next page.',
+    scopes: [SCOPES.environmentRead],
+  },
   list_organization_connections: {
     name: 'list_organization_connections',
     description: 'List all connection for the selected organization. Requires environmentId parameter (format: env_<number>). The tool also requires organization id to be passed (e.g. org_123) ',
