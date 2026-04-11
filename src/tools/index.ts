@@ -95,41 +95,6 @@ const toolsList = {
     description: 'List all connection for the selected organization. Requires environmentId parameter (format: env_<number>). The tool also requires organization id to be passed (e.g. org_123) ',
     scopes: [SCOPES.organizationRead],
   },
-  create_environment_oidc_connection: {
-    name: 'create_environment_oidc_connection',
-    description: `Create a new OIDC connection for the specified environment. Requires environmentId parameter (format: env_<number>). This tool is responsible for creating the connection at environment level.
-The tool requires the following parameters:
-- provider: ("OKTA", "GOOGLE", "MICROSOFT_AD", "AUTH0", "ONELOGIN", "PING_IDENTITY", "JUMPCLOUD", "CUSTOM", "GITHUB", "GITLAB", "LINKEDIN", "SALESFORCE", "MICROSOFT", "IDP_SIMULATOR", "SCALEKIT", "ADFS")
-The tool returns the connection details especially redirect_uri which should be used to configure the properties on the IDP side. Ask user to confirm if the redirect uri is configured at the idp end. Once done then come back and give all the details needed for update_environment_connection.
-`,
-    scopes: [SCOPES.environmentWrite],
-  },
-  update_environment_oidc_connection: {
-    name: 'update_environment_oidc_connection',
-    description: `Update an existing OIDC connection for the specified environment. Requires environmentId parameter (format: env_<number>). This tool is responsible for updating the connection at environment level. Ask for all these parameters expicitly always from user
-The tool requires the following parameters:
-- connectionId: (ID of the connection to enable, e.g. conn_123)
-- key_id: (e.g. "GOOGLE", "DESCOPE", "OKTA", etc) - Should be in capital letters always
-- provider: ("OKTA", "GOOGLE", "MICROSOFT_AD", "AUTH0", "ONELOGIN", "PING_IDENTITY", "JUMPCLOUD", "CUSTOM", "GITHUB", "GITLAB", "LINKEDIN", "SALESFORCE", "MICROSOFT", "IDP_SIMULATOR", "SCALEKIT", "ADFS")
-- oidc_config: {
-    issuer: uri,
-    discovery_endpoint: uri,
-    authorize_uri: uri,
-    token_uri: uri,
-    user_info_uri: uri,
-    jwks_uri: uri,
-    client_id: string,
-    client_secret: string,
-    scopes: string[],
-    token_auth_type: uri,
-    redirect_uri: uri,
-    pkce_enabled: boolean,
-    idp_logout_required: boolean,
-    post_logout_redirect_uri: uri,
-    backchannel_logout_redirect_uri: uri,
-    The tool returns the connection details which should be reviewed. Once the user confirms, then invoke enable_environment_connection tool to enable the connection.`,
-    scopes: [SCOPES.environmentWrite],
-  },
   enable_environment_connection: {
     name: 'enable_environment_connection',
     description: `Enable an existing connection for the specified environment. Requires environmentId parameter (format: env_<number>). This tool requires the following parameters:
