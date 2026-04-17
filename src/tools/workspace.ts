@@ -19,6 +19,7 @@ function listWorkspaceMembers(server: McpServer): RegisteredTool {
         {
             pageToken: z.number().optional().default(1),
         },
+        { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
         async ({ pageToken }, context) => {
             const authInfo = context.authInfo as AuthInfo;
             const token = authInfo?.token;
@@ -72,6 +73,7 @@ function inviteWorkspaceMember(server: McpServer): RegisteredTool {
         {
             email: z.string().min(1, 'Email is required'),
         },
+        { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
         async ({ email }, context) => {
             const authInfo = context.authInfo as AuthInfo;
             const token = authInfo?.token;

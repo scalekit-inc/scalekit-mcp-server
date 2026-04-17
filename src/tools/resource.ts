@@ -23,6 +23,7 @@ function listMcpServersTool(server: McpServer): RegisteredTool {
       environmentId: environmentIdSchema,
       pageToken: z.string().optional().default(''),
     },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     async ({ environmentId, pageToken }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -97,6 +98,7 @@ function registerMcpServerTool(server: McpServer): RegisteredTool {
       provider: z.string().optional().default(''),
       useScalekitAuthentication: z.boolean(),
     },
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     async ({ environmentId, name, description, mcpServerUrl, accessTokenExpiry, provider, useScalekitAuthentication }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -239,6 +241,7 @@ function updateMcpServerTool(server: McpServer): RegisteredTool {
           provider: z.string().optional().default(''),
           useScalekitAuthentication: z.boolean(),
         },
+        { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
         async ({ environmentId, id, name, description, mcpServerUrl, accessTokenExpiry, provider, useScalekitAuthentication }, context) => {
             const authInfo = context.authInfo as AuthInfo;
             const token = authInfo?.token;
@@ -329,6 +332,7 @@ function switchMcpAuthToScalekitTool(server: McpServer): RegisteredTool {
           environmentId: environmentIdSchema,
           id: resourceIdSchema,
         },
+        { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
         async ({ environmentId, id }, context) => {
             const authInfo = context.authInfo as AuthInfo;
             const token = authInfo?.token;

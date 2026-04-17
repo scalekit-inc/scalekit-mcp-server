@@ -33,6 +33,7 @@ function listEnvironmentsTool(server: McpServer): RegisteredTool {
       pageToken: z.string().optional().describe('1-based page number (1, 2, 3...). Defaults to first page if not provided.'),
       pageSize: z.number().int().min(1).max(100).optional().default(20),
     },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     async ({ pageToken, pageSize }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -75,6 +76,7 @@ function getEnvironmentDetailsTool(server: McpServer): RegisteredTool {
     TOOLS.get_environment_details.name,
     TOOLS.get_environment_details.description,
     { environmentId: environmentIdSchema },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     async ({ environmentId }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -99,6 +101,7 @@ function getEnvironmentCredentialsTool(server: McpServer): RegisteredTool {
     TOOLS.get_environment_credentials.name,
     TOOLS.get_environment_credentials.description,
     { environmentId: environmentIdSchema },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     async ({ environmentId }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -143,6 +146,7 @@ function listEnvironmentRolesTool(server: McpServer): RegisteredTool {
     TOOLS.list_environment_roles.name,
     TOOLS.list_environment_roles.description,
     { environmentId: environmentIdSchema },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     async ({ environmentId }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -189,6 +193,7 @@ function createEnvironmentRolesTool(server: McpServer): RegisteredTool {
       description: z.string().optional().default(''),
       isDefault: z.boolean().optional().default(false),
     },
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     async ({ environmentId, roleName, roleDisplayName, description, isDefault }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -233,6 +238,7 @@ function createEnvironmentScopeTool(server: McpServer): RegisteredTool {
       scopeName: z.string().min(1, 'Scope name is required'),
       description: z.string().optional().default(''),
     },
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     async ({ environmentId, scopeName, description }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -269,6 +275,7 @@ function listEnvironmentScopesTool(server: McpServer): RegisteredTool {
     TOOLS.list_environment_scopes.name,
     TOOLS.list_environment_scopes.description,
     { environmentId: environmentIdSchema },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     async ({ environmentId }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -330,6 +337,7 @@ function listRedirectUrisTool(server: McpServer): RegisteredTool {
     TOOLS.list_redirect_uris.name,
     TOOLS.list_redirect_uris.description,
     { environmentId: environmentIdSchema },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     async ({ environmentId }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -368,6 +376,7 @@ function addRedirectUriTool(server: McpServer): RegisteredTool {
       environmentId: environmentIdSchema,
       uri: z.string().url('Must be a valid URL'),
     },
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     async ({ environmentId, uri }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -412,6 +421,7 @@ function removeRedirectUriTool(server: McpServer): RegisteredTool {
       environmentId: environmentIdSchema,
       uri: z.string().url('Must be a valid URL'),
     },
+    { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     async ({ environmentId, uri }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -458,6 +468,7 @@ function setInitiateLoginUriTool(server: McpServer): RegisteredTool {
       environmentId: environmentIdSchema,
       uri: z.string().url('Must be a valid URL'),
     },
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     async ({ environmentId, uri }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -489,6 +500,7 @@ function removeInitiateLoginUriTool(server: McpServer): RegisteredTool {
     TOOLS.remove_initiate_login_uri.name,
     TOOLS.remove_initiate_login_uri.description,
     { environmentId: environmentIdSchema },
+    { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     async ({ environmentId }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -523,6 +535,7 @@ function addPostLogoutRedirectUriTool(server: McpServer): RegisteredTool {
       environmentId: environmentIdSchema,
       uri: z.string().url('Must be a valid URL'),
     },
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     async ({ environmentId, uri }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -567,6 +580,7 @@ function removePostLogoutRedirectUriTool(server: McpServer): RegisteredTool {
       environmentId: environmentIdSchema,
       uri: z.string().url('Must be a valid URL'),
     },
+    { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     async ({ environmentId, uri }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;

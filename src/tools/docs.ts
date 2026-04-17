@@ -31,6 +31,7 @@ export function registerDocsTools(server: McpServer) {
     TOOLS.search_docs.name,
     TOOLS.search_docs.description,
     { query: z.string().min(1) },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     async ({ query }) => {
       try {
         const docUrls = await getDocUrls();

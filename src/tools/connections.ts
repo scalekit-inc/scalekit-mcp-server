@@ -67,6 +67,7 @@ function getEnvironmentConnectionsTool(server: McpServer): RegisteredTool {
     TOOLS.list_environment_connections.name,
     TOOLS.list_environment_connections.description,
     { environmentId: environmentIdSchema },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     async ({ environmentId }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -103,6 +104,7 @@ function listConnectedAccountsTool(server: McpServer): RegisteredTool {
       pageSize: z.number().int().min(1).max(100).optional().default(20),
       pageToken: z.string().optional().describe('Opaque token from a previous response next_page_token to fetch the next page.'),
     },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     async ({ environmentId, pageSize, pageToken }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -162,6 +164,7 @@ function createConnectedAccountMagicLinkTool(server: McpServer): RegisteredTool 
       identifier: z.string().min(1, 'identifier is required'),
       connector: z.string().min(1, 'connector is required'),
     },
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     async ({ environmentId, identifier, connector }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -212,6 +215,7 @@ function getOrganizationConnectionsTool(server: McpServer): RegisteredTool {
       environmentId: environmentIdSchema,
       organizationId: organizationIdSchema,
     },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     async ({ environmentId, organizationId }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -247,6 +251,7 @@ function enableConnectionTool(server: McpServer): RegisteredTool {
       environmentId: environmentIdSchema,
       connection_id: connectionIdSchema,
     },
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     async ({ environmentId, connection_id }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;

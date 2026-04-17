@@ -33,6 +33,7 @@ function createOrganizationTool(server: McpServer): RegisteredTool {
       environmentId: environmentIdSchema,
       organizationName: z.string().min(1, 'Organization name is required'),
     },
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     async ({ environmentId, organizationName }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -84,6 +85,7 @@ function listOrganizationsTool(server: McpServer): RegisteredTool {
       environmentId: environmentIdSchema,
       pageToken: z.string().optional().default(''),
     },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     async ({ environmentId, pageToken }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -156,6 +158,7 @@ function getOrganizationDetailsTool(server: McpServer): RegisteredTool {
       environmentId: environmentIdSchema,
       organizationId: organizationIdSchema,
     },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     async ({ environmentId, organizationId }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -208,6 +211,7 @@ function generateAdminPortalLinkTool(server: McpServer): RegisteredTool {
       environmentId: environmentIdSchema,
       organizationId: organizationIdSchema,
     },
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     async ({ environmentId, organizationId }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -257,6 +261,7 @@ function createOrganizationUserTool(server: McpServer): RegisteredTool {
       email: z.string().min(1, 'Email is required'),
       role: z.string().min(1, 'Role is required'),
     },
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     async ({ environmentId, organizationId, email, role }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -323,6 +328,7 @@ function listOrganizationUsersTool(server: McpServer): RegisteredTool {
       organizationId: organizationIdSchema,
       pageToken: z.string().optional().default(''),
     },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     async ({ environmentId, organizationId, pageToken }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
@@ -404,6 +410,7 @@ function updateOrganizationSettingsTool(server: McpServer): RegisteredTool {
         )
         .min(1, 'At least one feature must be provided'),
     },
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     async ({ environmentId, organizationId, features }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
