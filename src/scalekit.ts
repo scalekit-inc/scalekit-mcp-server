@@ -54,7 +54,7 @@ app.use('/info', express.static('public'));
 app.get(OAUTH_PROTECTED_RESOURCE_PATH, oauthProtectedResourceHandler);
 
 app.get('/.well-known/openai-apps-challenge', (_req, res) => {
-  res.set('Content-Type', 'text/plain').send('ZPfxIi7JmGaiZ5YCVCbwzmr4UOL5f5wKfcMkUwNagJM');
+  res.set('Content-Type', 'text/plain').send('JlPXIdtHpkvdePeLy69m2A5O6QtPrw8mKoTbISiH63w');
 });
 
 app.use(express.json());
