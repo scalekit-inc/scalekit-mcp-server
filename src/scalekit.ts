@@ -53,6 +53,10 @@ app.use('/info', express.static('public'));
 
 app.get(OAUTH_PROTECTED_RESOURCE_PATH, oauthProtectedResourceHandler);
 
+app.get('/.well-known/openai-apps-challenge', (_req, res) => {
+  res.set('Content-Type', 'text/plain').send('ZPfxIi7JmGaiZ5YCVCbwzmr4UOL5f5wKfcMkUwNagJM');
+});
+
 app.use(express.json());
 const scalekit = new Scalekit(config.skEnvUrl, config.skClientId, config.skClientSecret);
 
