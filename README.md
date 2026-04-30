@@ -29,7 +29,7 @@
 - **Natural Language Identity Management**: Manage users, organizations, and connections through AI conversations
 - **OAuth-Protected Access**: Secure AI agent interactions with enterprise authentication
 - **Comprehensive API Coverage**: Full access to Scalekit's identity and access management capabilities
-- **Multi-Client Support**: Works with Claude Desktop, VS Code, Cursor, Windsurf, and other MCP clients
+- **Multi-Client Support**: Works with Claude Code, Claude Desktop, VS Code, Cursor, Windsurf, Gemini CLI, Codex, OpenCode, Roo Code, Zed, Kiro, Warp, v0 by Vercel, and any MCP-compatible client
 
 ## Overview
 
@@ -45,14 +45,35 @@ This MCP server enables AI assistants to interact with Scalekit's identity and a
 - Role and scope management
 - Admin portal link generation
 
-## Configuration 
+## Configuration
 
-<table>
-<tr><th>Using OAuth</th><th>Using mcp-remote proxy</th></tr>
-<tr><th align=left colspan=2>VS Code (version 1.101 or greater)</th></tr>
-<tr valign=top>
-<td>
-  
+Find your AI coding tool below and follow the steps — your client will prompt you to sign in via OAuth on first use.
+
+### Claude Code
+
+```bash
+claude mcp add --transport http scalekit https://mcp.scalekit.com/
+```
+
+### Claude Desktop
+
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows), then restart Claude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "scalekit": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://mcp.scalekit.com/"]
+    }
+  }
+}
+```
+
+### VS Code
+
+Edit `.vscode/mcp.json` in your project (requires VS Code 1.101 or later):
+
 ```json
 {
   "servers": {
@@ -64,64 +85,15 @@ This MCP server enables AI assistants to interact with Scalekit's identity and a
 }
 ```
 
-</td>
-<td>
-
-```json
-{
-  "mcpServers": {
-    "scalekit": {
-      "command": "npx", 
-      "args": ["-y", "mcp-remote", "https://mcp.scalekit.com/"]
-    }
-  }
-}
-```
-
-</td>
-</tr>
-</table>
-
-Based on your MCP Host, configuration instructions to add Scalekit as an MCP Server can be found below:
-
-
-### Claude Desktop
-  
-Configure the Claude app to use the MCP server:
-
-1. Open the Claude Desktop app, go to Settings, then Developer
-2. Click Edit Config
-3. Open the claude_desktop_config.json file
-4. Copy and paste the server config to your existing file, then save
-5. Restart Claude
-
-```json
-{
-  "mcpServers": {
-    "scalekit": {
-      "command": "npx", 
-      "args": ["-y", "mcp-remote", "https://mcp.scalekit.com/"]
-    }
-  }
-}
-```
-
 ### Cursor
 
-Configure Cursor to use the MCP server:
-
-1. Open Cursor, go to Settings, then Cursor Settings
-2. Select MCP on the left
-3. Click Add "New Global MCP Server" at the top right
-4. Copy and paste the server config to your existing file, then save
-5. Restart Cursor
+Edit `~/.cursor/mcp.json`, or open **Cursor Settings → MCP → Add New Global MCP Server** and paste the config:
 
 ```json
 {
   "mcpServers": {
     "scalekit": {
-      "command": "npx", 
-      "args": ["-y", "mcp-remote", "https://mcp.scalekit.com/"]
+      "url": "https://mcp.scalekit.com/"
     }
   }
 }
@@ -129,25 +101,127 @@ Configure Cursor to use the MCP server:
 
 ### Windsurf
 
-Configure Windsurf to use the MCP server:
- 
-1. Open Windsurf, go to Settings, then Developer
-2. Click Edit Config
-3. Open the windsurf_config.json file
-4. Copy and paste the server config to your existing file, then save
-5. Restart Windsurf
-
+Edit `~/.codeium/windsurf/mcp_config.json`:
 
 ```json
 {
   "mcpServers": {
     "scalekit": {
-      "command": "npx", 
+      "serverUrl": "https://mcp.scalekit.com/"
+    }
+  }
+}
+```
+
+### Gemini CLI
+
+Edit `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "scalekit": {
+      "httpUrl": "https://mcp.scalekit.com/"
+    }
+  }
+}
+```
+
+### Codex
+
+```bash
+codex mcp add scalekit --url https://mcp.scalekit.com/
+```
+
+### OpenCode
+
+Edit `opencode.json` in your project root:
+
+```json
+{
+  "mcp": {
+    "scalekit": {
+      "type": "remote",
+      "url": "https://mcp.scalekit.com/",
+      "enabled": true
+    }
+  }
+}
+```
+
+### Roo Code
+
+```json
+{
+  "mcpServers": {
+    "scalekit": {
+      "type": "streamable-http",
+      "url": "https://mcp.scalekit.com/"
+    }
+  }
+}
+```
+
+### Zed
+
+Add to your Zed `settings.json`:
+
+```json
+{
+  "context_servers": {
+    "scalekit": {
+      "url": "https://mcp.scalekit.com/"
+    }
+  }
+}
+```
+
+### Kiro
+
+Edit `~/.kiro/settings/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "scalekit": {
+      "url": "https://mcp.scalekit.com/"
+    }
+  }
+}
+```
+
+### Warp
+
+Go to **Settings → MCP Servers → Add MCP Server** and enter `https://mcp.scalekit.com/`, or add to your Warp MCP config:
+
+```json
+{
+  "scalekit": {
+    "serverUrl": "https://mcp.scalekit.com/"
+  }
+}
+```
+
+### v0 by Vercel
+
+Go to **Prompt Tools → Add MCP** and enter `https://mcp.scalekit.com/`.
+
+### Via npm package
+
+If your client does not complete the OAuth flow with the steps above, use `mcp-remote` as a local proxy — it handles the OAuth handshake for any client. Replace your platform's native config with:
+
+```json
+{
+  "mcpServers": {
+    "scalekit": {
+      "command": "npx",
       "args": ["-y", "mcp-remote", "https://mcp.scalekit.com/"]
     }
   }
 }
 ```
+
+For Claude Desktop, this is already the config shown above. For Claude Code, add this to `.mcp.json` in your project root. For all other tools, replace the native config block and restart the client.
 
 ## Available Tools
 
