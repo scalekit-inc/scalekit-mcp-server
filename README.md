@@ -57,18 +57,11 @@ claude mcp add --transport http scalekit https://mcp.scalekit.com/
 
 ### Claude Desktop
 
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows), then restart Claude Desktop:
-
-```json
-{
-  "mcpServers": {
-    "scalekit": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "https://mcp.scalekit.com/"]
-    }
-  }
-}
-```
+1. Open Claude Desktop
+2. Go to **Settings → Connectors**
+3. Click **Add custom connector**
+4. Enter `https://mcp.scalekit.com`
+5. Click **Connect** to authenticate
 
 ### VS Code
 
@@ -205,23 +198,6 @@ Go to **Settings → MCP Servers → Add MCP Server** and enter `https://mcp.sca
 ### v0 by Vercel
 
 Go to **Prompt Tools → Add MCP** and enter `https://mcp.scalekit.com/`.
-
-### Via npm package
-
-If your client does not complete the OAuth flow with the steps above, use `mcp-remote` as a local proxy — it handles the OAuth handshake for any client. Replace your platform's native config with:
-
-```json
-{
-  "mcpServers": {
-    "scalekit": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "https://mcp.scalekit.com/"]
-    }
-  }
-}
-```
-
-For Claude Desktop, this is already the config shown above. For Claude Code, add this to `.mcp.json` in your project root. For all other tools, replace the native config block and restart the client.
 
 ## Available Tools
 
