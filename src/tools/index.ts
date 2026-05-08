@@ -82,7 +82,7 @@ const toolsList = {
   list_connected_accounts: {
     name: 'list_connected_accounts',
     description:
-      'List connected accounts (OAuth connector accounts such as Gmail, Notion) at the environment level. Requires environmentId (format: env_<number>). Supports pagination: pageSize (default 20) and optional pageToken from the previous response. Show the response in tabular structured manner. After each page, ask whether to fetch the next page.',
+      'List users (connected accounts) who have authorized with connectors in the given environment. Filter by connector type (e.g. "HUBSPOT") or specific connection ID. Returns accounts grouped by connector showing identifier, status, and auth details.',
     scopes: [SCOPES.environmentRead],
   },
   create_connected_account_magic_link: {

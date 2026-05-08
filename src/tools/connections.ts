@@ -36,7 +36,35 @@ function formatConnections(connections: Connection[]): string {
     .join('\n');
 }
 
-function formatConnectedAccounts(accounts: ConnectedAccount[]): string {
+/** Summary format: group connected accounts by connector, show key details per account. */
+function formatConnectedAccountsSummary(accounts: ConnectedAccount[]): string {
+  const grouped = new Map<string, ConnectedAccount[]>();
+  for (const ca of accounts) {
+    const key = ca.provider || ca.connector || 'UNKNOWN';
+    const list = grouped.get(key) ?? [];
+    list.push(ca);
+    grouped.set(key, list);
+  }
+  const sections: string[] = [];
+  for (const [connector, connectorAccounts] of grouped) {
+    const lines = connectorAccounts.map((ca) => {
+      const parts = [
+        ca.identifier,
+        `status: ${ca.status}`,
+        `auth: ${ca.authorization_type}`,
+        ca.connection_id ? `connection: ${ca.connection_id}` : null,
+        ca.last_used_at ? `last_used: ${ca.last_used_at}` : null,
+        ca.token_expires_at ? `token_expires: ${ca.token_expires_at}` : null,
+      ].filter(Boolean).join(' | ');
+      return `  - ${parts}`;
+    });
+    sections.push(`${connector} (${connectorAccounts.length} account${connectorAccounts.length === 1 ? '' : 's'}):\n${lines.join('\n')}`);
+  }
+  return sections.join('\n\n');
+}
+
+/** Full format: all fields per account, flat list. */
+function formatConnectedAccountsFull(accounts: ConnectedAccount[]): string {
   return accounts
     .map((ca) => {
       const details = [
@@ -105,10 +133,25 @@ function listConnectedAccountsTool(server: McpServer): RegisteredTool {
     TOOLS.list_connected_accounts.description,
     {
       environmentId: environmentIdSchema,
+      connector: z
+        .string()
+        .optional()
+        .describe('Filter by connector type (e.g. "HUBSPOT", "GMAIL", "NOTION").'),
+      connectionId: z
+        .string()
+        .optional()
+        .describe('Filter by a specific connection ID to see only accounts linked to that connection.'),
+      summary: z
+        .boolean()
+        .optional()
+        .default(true)
+        .describe(
+          'When true (default), returns accounts grouped by connector with key details. Set to false for full account details.'
+        ),
       pageSize: z.number().int().min(1).max(100).optional().default(20),
-      pageToken: z.string().optional().describe('Opaque token from a previous response next_page_token to fetch the next page.'),
+      pageToken: z.string().optional().describe('Opaque token from a previous response to fetch the next page.'),
     },
-    async ({ environmentId, pageSize, pageToken }, context) => {
+    async ({ environmentId, connector, connectionId, summary, pageSize, pageToken }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
 
@@ -128,18 +171,42 @@ function listConnectedAccountsTool(server: McpServer): RegisteredTool {
         }
 
         const data = (await res.json()) as ListConnectedAccountsResponse;
-        const accounts = data.connected_accounts ?? [];
-        const rows = formatConnectedAccounts(accounts);
+        let accounts = data.connected_accounts ?? [];
+
+        // Client-side filtering
+        if (connector) {
+          const upper = connector.toUpperCase();
+          accounts = accounts.filter(
+            (ca) => ca.provider?.toUpperCase() === upper || ca.connector?.toUpperCase() === upper
+          );
+        }
+        if (connectionId) {
+          accounts = accounts.filter((ca) => ca.connection_id === connectionId);
+        }
+
+        const body = summary
+          ? formatConnectedAccountsSummary(accounts)
+          : formatConnectedAccountsFull(accounts);
+
         const pagination = data.next_page_token
           ? `\n\nNext page token: ${data.next_page_token}`
-          : '\n\nNo more pages.';
-        const prev = data.prev_page_token ? `\nPrevious page token: ${data.prev_page_token}` : '';
+          : '';
+        const prev = data.prev_page_token
+          ? `\nPrevious page token: ${data.prev_page_token}`
+          : '';
+
+        const filterDesc = [
+          connector ? `connector=${connector}` : null,
+          connectionId ? `connection=${connectionId}` : null,
+        ]
+          .filter(Boolean)
+          .join(', ');
 
         return {
           content: [
             {
-              type: 'text',
-              text: `Total connected accounts: ${data.total_size ?? accounts.length}\n\n${rows || '(none)'}${pagination}${prev}`,
+              type: 'text' as const,
+              text: `Connected accounts${filterDesc ? ` (${filterDesc})` : ''} — ${accounts.length} found\n\n${body || '(no connected accounts found)'}${pagination}${prev}`,
             },
           ],
         };
