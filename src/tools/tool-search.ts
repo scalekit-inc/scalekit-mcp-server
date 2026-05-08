@@ -34,7 +34,7 @@ function formatToolsSummary(tools: ScalekitTool[]): string {
 
 /** Full format: complete tool definitions with input schemas. */
 function formatToolsFull(tools: ScalekitTool[]): string {
-  return tools
+  const rows = tools
     .map((tool) => {
       const details = [
         `id: ${tool.id}`,
@@ -49,6 +49,7 @@ function formatToolsFull(tools: ScalekitTool[]): string {
       return `- ${details}`;
     })
     .join('\n');
+  return rows + '\n\nNote: Output schemas are not included in tool definitions. For response structures, refer to the connector\'s official API documentation (see rest_api_info.base_url and rest_api_info.path_template for the upstream endpoint).';
 }
 
 export function registerToolSearchTools(server: McpServer) {

@@ -146,7 +146,7 @@ const toolsList = {
   search_tools: {
     name: 'search_tools',
     description:
-      'Search available tools (actions) exposed by connectors in the given environment. Filter by connector name (e.g. "HUBSPOT"), text query, or specific tool names. Returns tool definitions with provider, tags, and metadata. Use summary=true to retrieve tool names only.',
+      'Search available tools (actions) exposed by connectors in the given environment. Filter by connector name (e.g. "HUBSPOT") or search by action (e.g. "search contacts"). Returns tools grouped by connector. Set summary=false for full tool definitions including input schemas. Output schemas are not available — refer to the connector\'s official API documentation for response structures.',
     scopes: [SCOPES.environmentRead],
   },
   search_docs: {
