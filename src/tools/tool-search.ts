@@ -62,9 +62,9 @@ function searchToolsTool(server: McpServer): RegisteredTool {
       summary: z
         .boolean()
         .optional()
-        .default(false)
+        .default(true)
         .describe(
-          'If true, return only tool names instead of full tool details.'
+          'When true (default), returns tool names only. Set to false to get full tool definitions including input schemas.'
         ),
       pageSize: z.number().int().min(1).max(30).optional().default(20),
       pageToken: z
