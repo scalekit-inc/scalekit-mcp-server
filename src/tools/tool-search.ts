@@ -130,23 +130,17 @@ function searchToolsTool(server: McpServer): RegisteredTool {
   );
 }
 
-async function listToolsMode(
+async function fetchTools(
   token: string,
   environmentDomain: string,
-  filters: {
-    connector?: string;
-    query?: string;
-    summary?: boolean;
-  },
+  apiFilters: { provider?: string; query?: string },
   pageSize: number,
   pageToken?: string
-) {
-  const params = new URLSearchParams({
-    page_size: String(pageSize),
-  });
+): Promise<ListToolsResponse> {
+  const params = new URLSearchParams({ page_size: String(pageSize) });
   if (pageToken) params.set('page_token', pageToken);
-  if (filters.connector) params.set('filter.provider', filters.connector.toUpperCase());
-  if (filters.query) params.set('filter.query', filters.query);
+  if (apiFilters.provider) params.set('filter.provider', apiFilters.provider);
+  if (apiFilters.query) params.set('filter.query', apiFilters.query);
 
   const res = await fetch(
     `${ENDPOINTS.tools.list}?${params.toString()}`,
@@ -159,18 +153,53 @@ async function listToolsMode(
     throw new Error(`Failed to search tools: ${res.statusText}`);
   }
 
-  const data = (await res.json()) as ListToolsResponse;
-  const tools = data.tools ?? [];
-  const count = data.total_size ?? tools.length;
+  return (await res.json()) as ListToolsResponse;
+}
+
+async function listToolsMode(
+  token: string,
+  environmentDomain: string,
+  filters: {
+    connector?: string;
+    query?: string;
+    summary?: boolean;
+  },
+  pageSize: number,
+  pageToken?: string
+) {
+  const connector = filters.connector?.toUpperCase();
+  let data: ListToolsResponse;
+  let tools: ScalekitTool[];
+  let clientFiltered = false;
+
+  if (connector) {
+    // Try exact match first
+    data = await fetchTools(token, environmentDomain, { provider: connector, query: filters.query }, pageSize, pageToken);
+    tools = data.tools ?? [];
+
+    // If exact match returns nothing, fall back to client-side partial match
+    if (tools.length === 0 && !pageToken) {
+      data = await fetchTools(token, environmentDomain, { query: filters.query }, pageSize);
+      tools = (data.tools ?? []).filter(
+        (t) => t.provider?.toUpperCase().includes(connector)
+      );
+      clientFiltered = true;
+    }
+  } else {
+    data = await fetchTools(token, environmentDomain, { query: filters.query }, pageSize, pageToken);
+    tools = data.tools ?? [];
+  }
+
+  const count = clientFiltered ? tools.length : (data.total_size ?? tools.length);
 
   const body = filters.summary
     ? formatToolsSummary(tools)
     : formatToolsFull(tools);
 
-  const pagination = data.next_page_token
+  const pagination = !clientFiltered && data.next_page_token
     ? `\n\nNext page token: ${data.next_page_token}`
     : '';
-  const prev = data.prev_page_token
+  const prev = !clientFiltered && data.prev_page_token
     ? `\nPrevious page token: ${data.prev_page_token}`
     : '';
 
