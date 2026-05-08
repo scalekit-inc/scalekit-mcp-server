@@ -140,7 +140,7 @@ const toolsList = {
   search_connectors: {
     name: 'search_connectors',
     description:
-      'Search available connectors (providers such as Google, Notion, Slack) in the specified environment. Requires environmentId (format: env_<number>). Use "query" for keyword search (e.g. "gmail", "hubspot") or "identifier" for exact lookup (e.g. "GOOGLE_WORKSPACE"). Optionally filter by providerType (DEFAULT, CUSTOM, or ALL). Show the response in tabular structured manner.',
+      'Search available connectors (providers such as Google, Notion, Slack) in the specified environment. Requires environmentId (format: env_<number>). Use "query" for keyword search (e.g. "gmail", "hubspot") or "identifier" for exact lookup (e.g. "GOOGLE_WORKSPACE"). Optionally filter by providerType (DEFAULT, CUSTOM, or ALL). Set includeSetupStatus=true to see which connectors have been set up (have active connections) in the environment. Show the response in tabular structured manner.',
     scopes: [SCOPES.environmentRead],
   },
   search_tools: {

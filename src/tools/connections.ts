@@ -5,11 +5,13 @@ import { envHeaders, getEnvironmentDomain } from '../lib/api.js';
 import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
 import {
+  AppConnection,
   AuthInfo,
   ConnectedAccount,
   Connection,
   CreateConnectedAccountMagicLinkResponse,
   EnableConnectionResponse,
+  ListAppConnectionsResponse,
   ListConnectedAccountsResponse,
   ListConnectionsResponse,
   ListProvidersResponse,
@@ -156,7 +158,7 @@ function listConnectedAccountsTool(server: McpServer): RegisteredTool {
   );
 }
 
-function formatProviders(providers: Provider[]): string {
+function formatProviders(providers: Provider[], setupMap?: Map<string, AppConnection[]>): string {
   return providers
     .map((p) => {
       const details = [
@@ -168,12 +170,40 @@ function formatProviders(providers: Provider[]): string {
         p.is_custom_mcp ? `custom_mcp: true` : null,
         p.coming_soon ? `coming_soon: true` : null,
         p.proxy_enabled ? `proxy_url: ${p.proxy_url}` : null,
-      ]
-        .filter(Boolean)
-        .join(' | ');
-      return `- ${details}`;
+      ];
+      if (setupMap) {
+        const conns = setupMap.get(p.identifier);
+        if (conns?.length) {
+          const summaries = conns.map((c) => `${c.status} (${c.type}, ${c.key_id})`).join('; ');
+          details.push(`setup: ${summaries}`);
+        } else {
+          details.push('setup: not_configured');
+        }
+      }
+      return `- ${details.filter(Boolean).join(' | ')}`;
     })
     .join('\n');
+}
+
+async function fetchAppConnections(token: string, environmentDomain: string): Promise<Map<string, AppConnection[]>> {
+  const params = new URLSearchParams({ page_size: '1000' });
+  const res = await fetch(`${ENDPOINTS.connections.listApp}?${params.toString()}`, {
+    headers: envHeaders(token, environmentDomain),
+  });
+  if (!res.ok) {
+    logger.warn(`Failed to fetch app connections for setup status: ${res.status}`);
+    return new Map();
+  }
+  const data = (await res.json()) as ListAppConnectionsResponse;
+  const map = new Map<string, AppConnection[]>();
+  for (const conn of data.connections ?? []) {
+    const key = conn.provider_key?.split(':')[0];
+    if (!key) continue;
+    const existing = map.get(key) ?? [];
+    existing.push(conn);
+    map.set(key, existing);
+  }
+  return map;
 }
 
 function matchesQuery(provider: Provider, query: string): boolean {
@@ -196,8 +226,9 @@ function searchConnectorsTool(server: McpServer): RegisteredTool {
       providerType: z.enum(['DEFAULT', 'CUSTOM', 'ALL']).optional().default('ALL').describe('Filter by provider type: DEFAULT (built-in), CUSTOM (environment-scoped), or ALL.'),
       pageSize: z.number().int().min(1).max(1000).optional().default(20),
       pageToken: z.string().optional().describe('Opaque token from a previous response to fetch the next page.'),
+      includeSetupStatus: z.boolean().optional().default(false).describe('When true, also checks which connectors have been set up (have active connections) in the environment.'),
     },
-    async ({ environmentId, query, identifier, providerType, pageSize, pageToken }, context) => {
+    async ({ environmentId, query, identifier, providerType, pageSize, pageToken, includeSetupStatus }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
 
@@ -214,9 +245,16 @@ function searchConnectorsTool(server: McpServer): RegisteredTool {
         if (identifier) params.set('identifier', identifier);
         if (providerType) params.set('filter.provider_type', providerType);
 
-        const res = await fetch(`${ENDPOINTS.providers.list}?${params.toString()}`, {
+        const providersFetch = fetch(`${ENDPOINTS.providers.list}?${params.toString()}`, {
           headers: envHeaders(token, environmentDomain),
         });
+
+        // Fetch app connections in parallel when setup status is requested
+        const setupMapPromise = includeSetupStatus
+          ? fetchAppConnections(token, environmentDomain)
+          : Promise.resolve(undefined);
+
+        const [res, setupMap] = await Promise.all([providersFetch, setupMapPromise]);
 
         if (!res.ok) {
           const errorText = await res.text();
@@ -239,7 +277,7 @@ function searchConnectorsTool(server: McpServer): RegisteredTool {
           const page = providers.slice(offset, offset + pageSize);
           const hasMore = offset + pageSize < totalMatches;
 
-          const rows = formatProviders(page);
+          const rows = formatProviders(page, setupMap);
           const range = totalMatches > 0
             ? ` (showing ${offset + 1}–${offset + page.length})`
             : '';
@@ -258,7 +296,7 @@ function searchConnectorsTool(server: McpServer): RegisteredTool {
         }
 
         // Non-search paths (identifier exact match or list all): use API-native pagination
-        const rows = formatProviders(providers);
+        const rows = formatProviders(providers, setupMap);
         const count = data.total_size ?? providers.length;
         const pagination = data.next_page_token
           ? `\n\nNext page token: ${data.next_page_token}`

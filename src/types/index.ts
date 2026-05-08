@@ -250,6 +250,25 @@ export interface Provider {
   is_custom_mcp: boolean;
 }
 
+/** App-level connection from GET /api/v1/connections/app (AgentKit connectors set up in the environment). */
+export interface AppConnection {
+  id: string;
+  provider: string;
+  type: string;
+  status: string;
+  enabled: boolean;
+  organization_id: string;
+  provider_key: string;
+  key_id: string;
+  created_at: string;
+}
+
+export interface ListAppConnectionsResponse {
+  connections: AppConnection[];
+  total_size: number;
+  next_page_token: string;
+}
+
 export interface ListProvidersResponse {
   providers: Provider[];
   total_size: number;
