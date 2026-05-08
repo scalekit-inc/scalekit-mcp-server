@@ -140,13 +140,13 @@ const toolsList = {
   search_connectors: {
     name: 'search_connectors',
     description:
-      'Search available connectors (providers such as Google, Notion, Slack) in the specified environment. Requires environmentId (format: env_<number>). Use "query" for keyword search (e.g. "gmail", "hubspot") or "identifier" for exact lookup (e.g. "GOOGLE_WORKSPACE"). Optionally filter by providerType (DEFAULT, CUSTOM, or ALL). Set includeSetupStatus=true to see which connectors have been set up (have active connections) in the environment. Show the response in tabular structured manner.',
+      'Search the connector catalog (e.g. Google, Notion, Slack) for the given environment. Returns matching connectors with their identifier, category, and type. When includeSetupStatus is true, each result is annotated with whether the connector has been set up in the environment.',
     scopes: [SCOPES.environmentRead],
   },
   search_tools: {
     name: 'search_tools',
     description:
-      'Search available tools (actions) for connectors in the specified environment. Requires environmentId (format: env_<number>). Filter by provider (e.g. "GOOGLE"), query text (min 3 chars), identifier (connected account identifier), connector name, connectedAccountId (e.g. "ca_123"), or specific toolNames. Set summary=true for tool names only. Supports pagination via pageSize and pageToken.',
+      'Search available tools (actions) exposed by connectors in the given environment. Returns tool definitions with provider, tags, and metadata. Use summary=true to retrieve tool names only. At least one filter criterion is required.',
     scopes: [SCOPES.environmentRead],
   },
   search_docs: {
