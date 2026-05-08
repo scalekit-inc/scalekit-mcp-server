@@ -235,8 +235,23 @@ export interface Resource {
 }
 
 
-export interface SearchConnectedAccountsResponse {
-  connected_accounts: ConnectedAccount[];
+export interface Provider {
+  id: string;
+  identifier: string;
+  display_name: string;
+  description: string;
+  categories: string[];
+  icon_src: string;
+  display_priority: number;
+  coming_soon: boolean;
+  proxy_url: string;
+  proxy_enabled: boolean;
+  is_custom: boolean;
+  is_custom_mcp: boolean;
+}
+
+export interface ListProvidersResponse {
+  providers: Provider[];
   total_size: number;
   next_page_token: string;
   prev_page_token: string;

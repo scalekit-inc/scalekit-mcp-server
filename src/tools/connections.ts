@@ -12,7 +12,8 @@ import {
   EnableConnectionResponse,
   ListConnectedAccountsResponse,
   ListConnectionsResponse,
-  SearchConnectedAccountsResponse,
+  ListProvidersResponse,
+  Provider,
 } from '../types/index.js';
 import { connectionIdSchema, environmentIdSchema, organizationIdSchema } from '../validators/types.js';
 import { TOOLS } from './index.js';
@@ -155,31 +156,53 @@ function listConnectedAccountsTool(server: McpServer): RegisteredTool {
   );
 }
 
+function formatProviders(providers: Provider[]): string {
+  return providers
+    .map((p) => {
+      const details = [
+        `identifier: ${p.identifier}`,
+        `display_name: ${p.display_name}`,
+        p.description ? `description: ${p.description}` : null,
+        p.categories?.length ? `categories: ${p.categories.join(', ')}` : null,
+        p.is_custom ? `custom: true` : null,
+        p.is_custom_mcp ? `custom_mcp: true` : null,
+        p.coming_soon ? `coming_soon: true` : null,
+        p.proxy_enabled ? `proxy_url: ${p.proxy_url}` : null,
+      ]
+        .filter(Boolean)
+        .join(' | ');
+      return `- ${details}`;
+    })
+    .join('\n');
+}
+
 function searchConnectorsTool(server: McpServer): RegisteredTool {
   return server.tool(
     TOOLS.search_connectors.name,
     TOOLS.search_connectors.description,
     {
       environmentId: environmentIdSchema,
-      query: z.string().min(3, 'Query must be at least 3 characters'),
-      connectionId: connectionIdSchema.optional().describe('Optional connection ID to narrow results to a specific connection.'),
+      identifier: z.string().optional().describe('Exact provider identifier to look up (e.g. "google_workspace", "slack").'),
+      providerType: z.enum(['DEFAULT', 'CUSTOM', 'ALL']).optional().default('ALL').describe('Filter by provider type: DEFAULT (built-in), CUSTOM (environment-scoped), or ALL.'),
       pageSize: z.number().int().min(1).max(30).optional().default(20),
       pageToken: z.string().optional().describe('Opaque token from a previous response to fetch the next page.'),
     },
-    async ({ environmentId, query, connectionId, pageSize, pageToken }, context) => {
+    async ({ environmentId, identifier, providerType, pageSize, pageToken }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
 
       try {
         const environmentDomain = await getEnvironmentDomain(token, environmentId);
         const params = new URLSearchParams({
-          query,
           page_size: String(pageSize),
         });
         if (pageToken) params.set('page_token', pageToken);
-        if (connectionId) params.set('connection_id', connectionId);
+        if (identifier) params.set('identifier', identifier);
 
-        const res = await fetch(`${ENDPOINTS.connections.connectedAccountsSearch}?${params.toString()}`, {
+        const providerTypeMap: Record<string, string> = { DEFAULT: '0', CUSTOM: '1', ALL: '2' };
+        if (providerType) params.set('filter.provider_type', providerTypeMap[providerType] ?? '2');
+
+        const res = await fetch(`${ENDPOINTS.providers.list}?${params.toString()}`, {
           headers: envHeaders(token, environmentDomain),
         });
 
@@ -189,19 +212,22 @@ function searchConnectorsTool(server: McpServer): RegisteredTool {
           throw new Error(`Failed to search connectors: ${res.statusText}`);
         }
 
-        const data = (await res.json()) as SearchConnectedAccountsResponse;
-        const accounts = data.connected_accounts ?? [];
-        const rows = formatConnectedAccounts(accounts);
+        const data = (await res.json()) as ListProvidersResponse;
+        const providers = data.providers ?? [];
+        const rows = formatProviders(providers);
+        const count = data.total_size ?? providers.length;
         const pagination = data.next_page_token
           ? `\n\nNext page token: ${data.next_page_token}`
           : '\n\nNo more pages.';
         const prev = data.prev_page_token ? `\nPrevious page token: ${data.prev_page_token}` : '';
 
+        const filterDesc = identifier ? ` for identifier "${identifier}"` : '';
+
         return {
           content: [
             {
               type: 'text',
-              text: `Search results for "${query}" — ${data.total_size ?? accounts.length} total\n\n${rows || '(no matching connectors found)'}${pagination}${prev}`,
+              text: `Connectors${filterDesc} (${providerType ?? 'ALL'}) — ${count} total\n\n${rows || '(no connectors found)'}${pagination}${prev}`,
             },
           ],
         };

@@ -40,8 +40,11 @@ export const ENDPOINTS = {
     enableById: (id: string) => `${SK_API_BASE_URL}/api/v1/connections/${id}:enable`,
     list: `${SK_API_BASE_URL}/api/v1/connections`,
     connectedAccountsList: `${SK_API_BASE_URL}/api/v1/connected_accounts`,
-    connectedAccountsSearch: `${SK_API_BASE_URL}/api/v1/connected_accounts:search`,
+    listApp: `${SK_API_BASE_URL}/api/v1/connections/app`,
     connectedAccountsMagicLink: `${SK_API_BASE_URL}/api/v1/connected_accounts/magic_link`,
+  },
+  providers: {
+    list: `${SK_API_BASE_URL}/api/v1/providers`,
   },
   tools: {
     list: `${SK_API_BASE_URL}/api/v1/tools`,

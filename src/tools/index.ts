@@ -140,7 +140,7 @@ const toolsList = {
   search_connectors: {
     name: 'search_connectors',
     description:
-      'Search OAuth connectors (connected accounts like Google, Notion, Slack) in the specified environment. Requires environmentId (format: env_<number>) and a query string (minimum 3 characters) that matches against identifiers, providers, or connector names. Optionally filter by connectionId. Supports pagination via pageSize and pageToken. Show the response in tabular structured manner.',
+      'List and search available connectors (providers such as Google, Notion, Slack) in the specified environment. Requires environmentId (format: env_<number>). Optionally filter by exact provider identifier or provider type (DEFAULT for built-in, CUSTOM for environment-scoped, ALL for both). Supports pagination via pageSize and pageToken. Show the response in tabular structured manner.',
     scopes: [SCOPES.environmentRead],
   },
   search_tools: {
