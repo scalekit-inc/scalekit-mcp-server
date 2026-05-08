@@ -221,7 +221,7 @@ function searchConnectorsTool(server: McpServer): RegisteredTool {
     TOOLS.search_connectors.description,
     {
       environmentId: environmentIdSchema,
-      query: z.string().min(1).describe('Search keyword to match against connector name, identifier, description, or categories (e.g. "gmail", "slack", "hubspot").'),
+      query: z.string().min(1).optional().describe('Search keyword to match against connector name, identifier, description, or categories (e.g. "gmail", "slack", "hubspot").'),
       identifier: z.string().optional().describe('Exact provider identifier for a precise lookup (e.g. "GOOGLE_WORKSPACE", "SLACK"). Use "query" for keyword search instead.'),
       providerType: z.enum(['DEFAULT', 'CUSTOM', 'ALL']).optional().default('ALL').describe('Filter by provider type: DEFAULT (built-in), CUSTOM (environment-scoped), or ALL.'),
       pageSize: z.number().int().min(1).max(1000).optional().default(20),
@@ -231,6 +231,17 @@ function searchConnectorsTool(server: McpServer): RegisteredTool {
     async ({ environmentId, query, identifier, providerType, pageSize, pageToken, includeSetupStatus }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
+
+      if (!query && !identifier && (!providerType || providerType === 'ALL')) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: 'At least one search criterion is required: provide a query, identifier, or providerType (DEFAULT or CUSTOM).',
+            },
+          ],
+        };
+      }
 
       try {
         const environmentDomain = await getEnvironmentDomain(token, environmentId);
