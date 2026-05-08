@@ -46,33 +46,15 @@ function searchToolsTool(server: McpServer): RegisteredTool {
     TOOLS.search_tools.description,
     {
       environmentId: environmentIdSchema,
+      connector: z
+        .string()
+        .optional()
+        .describe('Filter by connector (e.g. "GOOGLE", "HUBSPOT", "NOTION").'),
       query: z
         .string()
         .min(3, 'Query must be at least 3 characters')
         .optional()
         .describe('Text search across tool names and descriptions.'),
-      provider: z
-        .string()
-        .optional()
-        .describe('Filter by provider name (e.g. "GOOGLE", "NOTION").'),
-      identifier: z
-        .string()
-        .optional()
-        .describe(
-          'Filter by connected account identifier (e.g. "app_google_workspace").'
-        ),
-      connector: z
-        .string()
-        .optional()
-        .describe(
-          'Connector name (e.g. "My Gmail"). When set with identifier, resolves to a specific connected account and includes its custom MCP tools.'
-        ),
-      connectedAccountId: z
-        .string()
-        .optional()
-        .describe(
-          'Connected account ID (e.g. "ca_123"). Alternative to identifier + connector for directly identifying the connected account.'
-        ),
       toolNames: z
         .array(z.string())
         .optional()
@@ -91,15 +73,15 @@ function searchToolsTool(server: McpServer): RegisteredTool {
         .describe('Opaque token from a previous response to fetch the next page.'),
     },
     async (
-      { environmentId, query, provider, identifier, connector, connectedAccountId, toolNames, summary, pageSize, pageToken },
+      { environmentId, connector, query, toolNames, summary, pageSize, pageToken },
       context
     ) => {
-      if (!query && !provider && !identifier && !connector && !connectedAccountId && !toolNames?.length) {
+      if (!connector && !query && !toolNames?.length) {
         return {
           content: [
             {
               type: 'text' as const,
-              text: 'At least one search criterion is required: provide a query, provider, identifier, connector, connectedAccountId, or toolNames.',
+              text: 'At least one search criterion is required: provide a connector, query, or toolNames.',
             },
           ],
         };
@@ -117,7 +99,7 @@ function searchToolsTool(server: McpServer): RegisteredTool {
         return await listToolsMode(
           token,
           environmentDomain,
-          { query, provider, identifier, connector, connectedAccountId, toolNames, summary },
+          { connector, query, toolNames, summary },
           pageSize,
           pageToken
         );
@@ -140,11 +122,8 @@ async function listToolsMode(
   token: string,
   environmentDomain: string,
   filters: {
-    query?: string;
-    provider?: string;
-    identifier?: string;
     connector?: string;
-    connectedAccountId?: string;
+    query?: string;
     toolNames?: string[];
     summary?: boolean;
   },
@@ -155,11 +134,8 @@ async function listToolsMode(
     page_size: String(pageSize),
   });
   if (pageToken) params.set('page_token', pageToken);
+  if (filters.connector) params.set('filter.provider', filters.connector);
   if (filters.query) params.set('filter.query', filters.query);
-  if (filters.provider) params.set('filter.provider', filters.provider);
-  if (filters.identifier) params.set('filter.identifier', filters.identifier);
-  if (filters.connector) params.set('filter.connector', filters.connector);
-  if (filters.connectedAccountId) params.set('filter.connected_account_id', filters.connectedAccountId);
   if (filters.summary) params.set('filter.summary', 'true');
   if (filters.toolNames?.length) {
     for (const name of filters.toolNames) {
@@ -193,11 +169,8 @@ async function listToolsMode(
     : '';
 
   const searchDesc = [
-    filters.query ? `query="${filters.query}"` : null,
-    filters.provider ? `provider=${filters.provider}` : null,
-    filters.identifier ? `identifier=${filters.identifier}` : null,
     filters.connector ? `connector=${filters.connector}` : null,
-    filters.connectedAccountId ? `connected_account_id=${filters.connectedAccountId}` : null,
+    filters.query ? `query="${filters.query}"` : null,
   ]
     .filter(Boolean)
     .join(', ');

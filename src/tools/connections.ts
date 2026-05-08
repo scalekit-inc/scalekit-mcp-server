@@ -222,22 +222,21 @@ function searchConnectorsTool(server: McpServer): RegisteredTool {
     {
       environmentId: environmentIdSchema,
       query: z.string().min(1).optional().describe('Search keyword to match against connector name, identifier, description, or categories (e.g. "gmail", "slack", "hubspot").'),
-      identifier: z.string().optional().describe('Exact provider identifier for a precise lookup (e.g. "GOOGLE_WORKSPACE", "SLACK"). Use "query" for keyword search instead.'),
-      providerType: z.enum(['DEFAULT', 'CUSTOM', 'ALL']).optional().default('ALL').describe('Filter by provider type: DEFAULT (built-in), CUSTOM (environment-scoped), or ALL.'),
+      connectorType: z.enum(['DEFAULT', 'CUSTOM', 'ALL']).optional().default('ALL').describe('Filter by connector type: DEFAULT (built-in), CUSTOM (user-created), or ALL.'),
       pageSize: z.number().int().min(1).max(1000).optional().default(20),
       pageToken: z.string().optional().describe('Opaque token from a previous response to fetch the next page.'),
       includeSetupStatus: z.boolean().optional().default(false).describe('When true, also checks which connectors have been set up (have active connections) in the environment.'),
     },
-    async ({ environmentId, query, identifier, providerType, pageSize, pageToken, includeSetupStatus }, context) => {
+    async ({ environmentId, query, connectorType, pageSize, pageToken, includeSetupStatus }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
 
-      if (!query && !identifier && (!providerType || providerType === 'ALL')) {
+      if (!query && (!connectorType || connectorType === 'ALL')) {
         return {
           content: [
             {
               type: 'text' as const,
-              text: 'At least one search criterion is required: provide a query, identifier, or providerType (DEFAULT or CUSTOM).',
+              text: 'At least one search criterion is required: provide a query or set connectorType to DEFAULT or CUSTOM.',
             },
           ],
         };
@@ -246,15 +245,14 @@ function searchConnectorsTool(server: McpServer): RegisteredTool {
       try {
         const environmentDomain = await getEnvironmentDomain(token, environmentId);
 
-        // When the user provides a search query, fetch all providers and filter client-side
+        // Fetch all providers and filter client-side when a query is provided,
         // because the API's identifier param only supports exact match.
-        const isSearch = !!query && !identifier;
+        const isSearch = !!query;
         const params = new URLSearchParams({
           page_size: String(isSearch ? 1000 : pageSize),
         });
         if (!isSearch && pageToken) params.set('page_token', pageToken);
-        if (identifier) params.set('identifier', identifier);
-        if (providerType) params.set('filter.provider_type', providerType);
+        if (connectorType) params.set('filter.provider_type', connectorType);
 
         const providersFetch = fetch(`${ENDPOINTS.providers.list}?${params.toString()}`, {
           headers: envHeaders(token, environmentDomain),
@@ -300,27 +298,24 @@ function searchConnectorsTool(server: McpServer): RegisteredTool {
             content: [
               {
                 type: 'text',
-                text: `Connectors matching "${query}" (${providerType ?? 'ALL'}) — ${totalMatches} found${range}\n\n${rows || '(no connectors found)'}${pagination}`,
+                text: `Connectors matching "${query}" (${connectorType ?? 'ALL'}) — ${totalMatches} found${range}\n\n${rows || '(no connectors found)'}${pagination}`,
               },
             ],
           };
         }
 
-        // Non-search paths (identifier exact match or list all): use API-native pagination
+        // Non-search path (connectorType filter only): use API-native pagination
         const rows = formatProviders(providers, setupMap);
         const count = data.total_size ?? providers.length;
         const pagination = data.next_page_token
           ? `\n\nNext page token: ${data.next_page_token}`
-          : '';
-        const filterDesc = identifier
-          ? ` for identifier "${identifier}"`
           : '';
 
         return {
           content: [
             {
               type: 'text',
-              text: `Connectors${filterDesc} (${providerType ?? 'ALL'}) — ${count} found\n\n${rows || '(no connectors found)'}${pagination}`,
+              text: `Connectors (${connectorType ?? 'ALL'}) — ${count} found\n\n${rows || '(no connectors found)'}${pagination}`,
             },
           ],
         };
