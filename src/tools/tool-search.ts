@@ -12,15 +12,34 @@ import {
 import { environmentIdSchema } from '../validators/types.js';
 import { TOOLS } from './index.js';
 
-function formatTools(tools: ScalekitTool[]): string {
+/** Summary format: group tools by connector, show name + short description. */
+function formatToolsSummary(tools: ScalekitTool[]): string {
+  const grouped = new Map<string, ScalekitTool[]>();
+  for (const tool of tools) {
+    const key = tool.provider || 'UNKNOWN';
+    const list = grouped.get(key) ?? [];
+    list.push(tool);
+    grouped.set(key, list);
+  }
+  const sections: string[] = [];
+  for (const [connector, connectorTools] of grouped) {
+    const lines = connectorTools.map((t) => {
+      const desc = t.definition?.description || t.definition?.display_name || '';
+      return desc ? `  - ${t.definition?.name ?? t.id} — ${desc}` : `  - ${t.definition?.name ?? t.id}`;
+    });
+    sections.push(`${connector} (${connectorTools.length} tool${connectorTools.length === 1 ? '' : 's'}):\n${lines.join('\n')}`);
+  }
+  return sections.join('\n\n');
+}
+
+/** Full format: complete tool definitions with input schemas. */
+function formatToolsFull(tools: ScalekitTool[]): string {
   return tools
     .map((tool) => {
       const details = [
         `id: ${tool.id}`,
-        `provider: ${tool.provider}`,
+        `connector: ${tool.provider}`,
         tool.tags?.length ? `tags: ${tool.tags.join(', ')}` : null,
-        tool.is_default != null ? `is_default: ${tool.is_default}` : null,
-        tool.updated_at ? `updated_at: ${tool.updated_at}` : null,
         tool.definition
           ? `definition: ${JSON.stringify(tool.definition)}`
           : null,
@@ -30,10 +49,6 @@ function formatTools(tools: ScalekitTool[]): string {
       return `- ${details}`;
     })
     .join('\n');
-}
-
-function formatToolNames(names: string[]): string {
-  return names.map((name) => `- ${name}`).join('\n');
 }
 
 export function registerToolSearchTools(server: McpServer) {
@@ -54,17 +69,13 @@ function searchToolsTool(server: McpServer): RegisteredTool {
         .string()
         .min(3, 'Query must be at least 3 characters')
         .optional()
-        .describe('Text search across tool names and descriptions.'),
-      toolNames: z
-        .array(z.string())
-        .optional()
-        .describe('Filter by specific tool names.'),
+        .describe('Search by action or capability (e.g. "search contacts", "send email", "create deal").'),
       summary: z
         .boolean()
         .optional()
         .default(true)
         .describe(
-          'When true (default), returns tool names only. Set to false to get full tool definitions including input schemas.'
+          'When true (default), returns tools grouped by connector with name and description. Set to false for full tool definitions including input schemas.'
         ),
       pageSize: z.number().int().min(1).max(30).optional().default(20),
       pageToken: z
@@ -73,15 +84,15 @@ function searchToolsTool(server: McpServer): RegisteredTool {
         .describe('Opaque token from a previous response to fetch the next page.'),
     },
     async (
-      { environmentId, connector, query, toolNames, summary, pageSize, pageToken },
+      { environmentId, connector, query, summary, pageSize, pageToken },
       context
     ) => {
-      if (!connector && !query && !toolNames?.length) {
+      if (!connector && !query) {
         return {
           content: [
             {
               type: 'text' as const,
-              text: 'At least one search criterion is required: provide a connector, query, or toolNames.',
+              text: 'At least one search criterion is required: provide a connector or query.',
             },
           ],
         };
@@ -99,7 +110,7 @@ function searchToolsTool(server: McpServer): RegisteredTool {
         return await listToolsMode(
           token,
           environmentDomain,
-          { connector, query, toolNames, summary },
+          { connector, query, summary },
           pageSize,
           pageToken
         );
@@ -124,7 +135,6 @@ async function listToolsMode(
   filters: {
     connector?: string;
     query?: string;
-    toolNames?: string[];
     summary?: boolean;
   },
   pageSize: number,
@@ -136,12 +146,6 @@ async function listToolsMode(
   if (pageToken) params.set('page_token', pageToken);
   if (filters.connector) params.set('filter.provider', filters.connector);
   if (filters.query) params.set('filter.query', filters.query);
-  if (filters.summary) params.set('filter.summary', 'true');
-  if (filters.toolNames?.length) {
-    for (const name of filters.toolNames) {
-      params.append('filter.tool_name', name);
-    }
-  }
 
   const res = await fetch(
     `${ENDPOINTS.tools.list}?${params.toString()}`,
@@ -155,15 +159,16 @@ async function listToolsMode(
   }
 
   const data = (await res.json()) as ListToolsResponse;
+  const tools = data.tools ?? [];
+  const count = data.total_size ?? tools.length;
 
-  const isSummary = filters.summary && data.tool_names?.length;
-  const body = isSummary
-    ? formatToolNames(data.tool_names)
-    : formatTools(data.tools ?? []);
-  const count = data.total_size ?? (isSummary ? data.tool_names?.length : data.tools?.length) ?? 0;
+  const body = filters.summary
+    ? formatToolsSummary(tools)
+    : formatToolsFull(tools);
+
   const pagination = data.next_page_token
     ? `\n\nNext page token: ${data.next_page_token}`
-    : '\n\nNo more pages.';
+    : '';
   const prev = data.prev_page_token
     ? `\nPrevious page token: ${data.prev_page_token}`
     : '';
