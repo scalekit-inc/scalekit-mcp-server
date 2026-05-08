@@ -64,6 +64,7 @@ function createOrganizationTool(server: McpServer): RegisteredTool {
         };
       } catch {
         return {
+          isError: true,
           content: [
             {
               type: 'text',
@@ -136,6 +137,7 @@ function listOrganizationsTool(server: McpServer): RegisteredTool {
       } catch (error) {
         logger.error(`Failed to fetch organizations`, error);
         return {
+          isError: true,
           content: [
             {
               type: 'text',
@@ -188,6 +190,7 @@ function getOrganizationDetailsTool(server: McpServer): RegisteredTool {
       } catch (error) {
         logger.error(`Failed to fetch organization details`, error);
         return {
+          isError: true,
           content: [
             {
               type: 'text',
@@ -235,6 +238,7 @@ function generateAdminPortalLinkTool(server: McpServer): RegisteredTool {
         };
       } catch {
         return {
+          isError: true,
           content: [
             {
               type: 'text',
@@ -263,7 +267,7 @@ function createOrganizationUserTool(server: McpServer): RegisteredTool {
 
       const emailError = validateEmail(email);
       if (emailError !== null) {
-        return { content: [{ type: 'text', text: emailError }] };
+        return { isError: true, content: [{ type: 'text', text: emailError }] };
       }
 
       try {
@@ -287,6 +291,7 @@ function createOrganizationUserTool(server: McpServer): RegisteredTool {
         if (!res.ok) {
           logger.error('Failed to create organization user', { status: res.statusText });
           return {
+            isError: true,
             content: [{ type: 'text', text: 'Failed to create organization user. Please try again.' }],
           };
         }
@@ -302,6 +307,7 @@ function createOrganizationUserTool(server: McpServer): RegisteredTool {
       } catch (error) {
         logger.error(`Failed to create organization user`, error);
         return {
+          isError: true,
           content: [
             {
               type: 'text',
@@ -376,6 +382,7 @@ function listOrganizationUsersTool(server: McpServer): RegisteredTool {
       } catch (error) {
         logger.error(`Failed to fetch organization users`, error);
         return {
+          isError: true,
           content: [
             {
               type: 'text',
@@ -443,6 +450,7 @@ function updateOrganizationSettingsTool(server: McpServer): RegisteredTool {
           error
         );
         return {
+          isError: true,
           content: [
             {
               type: 'text',

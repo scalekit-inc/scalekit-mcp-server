@@ -77,6 +77,7 @@ function listMcpServersTool(server: McpServer): RegisteredTool {
       } catch (error) {
         logger.error('Failed to fetch MCP servers', error);
         return {
+          isError: true,
           content: [{ type: 'text', text: 'Failed to fetch MCP servers. Please try again later.' }],
         };
       }
@@ -103,7 +104,7 @@ function registerMcpServerTool(server: McpServer): RegisteredTool {
 
       const urlError = validateUrls([mcpServerUrl]);
       if (urlError !== null) {
-        return { content: [{ type: 'text', text: urlError }] };
+        return { isError: true, content: [{ type: 'text', text: urlError }] };
       }
 
       const environmentDomain = await getEnvironmentDomain(token, environmentId);
@@ -120,6 +121,7 @@ function registerMcpServerTool(server: McpServer): RegisteredTool {
       } else {
         logger.warn(`Failed to fetch environment roles: ${JSON.stringify(scopesRes.json())}`);
         return {
+          isError: true,
           content: [
             {
               type: 'text',
@@ -131,6 +133,7 @@ function registerMcpServerTool(server: McpServer): RegisteredTool {
     } catch (err) {
       logger.warn(`Error fetching environment roles`, err);
         return {
+            isError: true,
             content: [
             {
                 type: 'text',
@@ -149,6 +152,7 @@ function registerMcpServerTool(server: McpServer): RegisteredTool {
     } catch (e) {
       logger.error(`Invalid MCP Server URL: ${mcpServerUrl}`, e);
       return {
+        isError: true,
         content: [
           {
             type: 'text',
@@ -202,6 +206,7 @@ function registerMcpServerTool(server: McpServer): RegisteredTool {
         } else {
           logger.error(`Failed to register mcp server: ${res.statusText}.`);
           return {
+            isError: true,
             content: [
               {
                 type: 'text',
@@ -213,6 +218,7 @@ function registerMcpServerTool(server: McpServer): RegisteredTool {
       } catch (error) {
         logger.error(`Failed to register mcp server`, error);
         return {
+          isError: true,
           content: [
             {
               type: 'text',
@@ -246,7 +252,7 @@ function updateMcpServerTool(server: McpServer): RegisteredTool {
             if (mcpServerUrl) {
               const urlError = validateUrls([mcpServerUrl]);
               if (urlError !== null) {
-                return { content: [{ type: 'text', text: urlError }] };
+                return { isError: true, content: [{ type: 'text', text: urlError }] };
               }
             }
 
@@ -270,6 +276,7 @@ function updateMcpServerTool(server: McpServer): RegisteredTool {
 
             if (Object.keys(updatePayload).length === 0) {
                 return {
+                    isError: true,
                     content: [
                         {
                             type: 'text',
@@ -298,6 +305,7 @@ function updateMcpServerTool(server: McpServer): RegisteredTool {
                 } else {
                     logger.error(`Failed to update mcp server: ${res.statusText}.`);
                     return {
+                        isError: true,
                         content: [
                             {
                                 type: 'text',
@@ -309,6 +317,7 @@ function updateMcpServerTool(server: McpServer): RegisteredTool {
             } catch (error) {
                 logger.error(`Failed to update mcp server`, error);
                 return {
+                    isError: true,
                     content: [
                         {
                             type: 'text',
@@ -353,6 +362,7 @@ function switchMcpAuthToScalekitTool(server: McpServer): RegisteredTool {
                 } else {
                     logger.error(`Failed to switch MCP server auth: ${res.statusText}.`);
                     return {
+                        isError: true,
                         content: [
                             {
                                 type: 'text',
@@ -364,6 +374,7 @@ function switchMcpAuthToScalekitTool(server: McpServer): RegisteredTool {
             } catch (error) {
                 logger.error(`Failed to switch MCP server auth`, error);
                 return {
+                    isError: true,
                     content: [
                         {
                             type: 'text',
