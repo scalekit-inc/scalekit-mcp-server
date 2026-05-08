@@ -275,13 +275,6 @@ export interface ListToolsResponse {
   prev_page_token: string;
 }
 
-export interface ListAvailableToolsResponse {
-  tools: ScalekitTool[];
-  total_size: number;
-  next_page_token: string;
-  prev_page_token: string;
-}
-
 export interface CreateConnectionResponse {
   connection: DetailedConnection;
 }

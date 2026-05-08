@@ -6,7 +6,6 @@ import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
 import {
   AuthInfo,
-  ListAvailableToolsResponse,
   ListToolsResponse,
   ScalekitTool,
 } from '../types/index.js';
@@ -60,7 +59,19 @@ function searchToolsTool(server: McpServer): RegisteredTool {
         .string()
         .optional()
         .describe(
-          'Connected account identifier string. When provided, switches to identifier-scoped mode and lists all tools available for that account.'
+          'Filter by connected account identifier (e.g. "app_google_workspace").'
+        ),
+      connector: z
+        .string()
+        .optional()
+        .describe(
+          'Connector name (e.g. "My Gmail"). When set with identifier, resolves to a specific connected account and includes its custom MCP tools.'
+        ),
+      connectedAccountId: z
+        .string()
+        .optional()
+        .describe(
+          'Connected account ID (e.g. "ca_123"). Alternative to identifier + connector for directly identifying the connected account.'
         ),
       toolNames: z
         .array(z.string())
@@ -80,15 +91,15 @@ function searchToolsTool(server: McpServer): RegisteredTool {
         .describe('Opaque token from a previous response to fetch the next page.'),
     },
     async (
-      { environmentId, query, provider, identifier, toolNames, summary, pageSize, pageToken },
+      { environmentId, query, provider, identifier, connector, connectedAccountId, toolNames, summary, pageSize, pageToken },
       context
     ) => {
-      if (!query && !provider && !identifier && !toolNames?.length) {
+      if (!query && !provider && !identifier && !connector && !connectedAccountId && !toolNames?.length) {
         return {
           content: [
             {
               type: 'text' as const,
-              text: 'At least one search criterion is required: provide a query, provider, identifier, or toolNames.',
+              text: 'At least one search criterion is required: provide a query, provider, identifier, connector, connectedAccountId, or toolNames.',
             },
           ],
         };
@@ -103,20 +114,10 @@ function searchToolsTool(server: McpServer): RegisteredTool {
           environmentId
         );
 
-        if (identifier) {
-          return await listAvailableToolsMode(
-            token,
-            environmentDomain,
-            identifier,
-            pageSize,
-            pageToken
-          );
-        }
-
         return await listToolsMode(
           token,
           environmentDomain,
-          { query, provider, toolNames, summary },
+          { query, provider, identifier, connector, connectedAccountId, toolNames, summary },
           pageSize,
           pageToken
         );
@@ -141,6 +142,9 @@ async function listToolsMode(
   filters: {
     query?: string;
     provider?: string;
+    identifier?: string;
+    connector?: string;
+    connectedAccountId?: string;
     toolNames?: string[];
     summary?: boolean;
   },
@@ -153,6 +157,9 @@ async function listToolsMode(
   if (pageToken) params.set('page_token', pageToken);
   if (filters.query) params.set('filter.query', filters.query);
   if (filters.provider) params.set('filter.provider', filters.provider);
+  if (filters.identifier) params.set('filter.identifier', filters.identifier);
+  if (filters.connector) params.set('filter.connector', filters.connector);
+  if (filters.connectedAccountId) params.set('filter.connected_account_id', filters.connectedAccountId);
   if (filters.summary) params.set('filter.summary', 'true');
   if (filters.toolNames?.length) {
     for (const name of filters.toolNames) {
@@ -188,6 +195,9 @@ async function listToolsMode(
   const searchDesc = [
     filters.query ? `query="${filters.query}"` : null,
     filters.provider ? `provider=${filters.provider}` : null,
+    filters.identifier ? `identifier=${filters.identifier}` : null,
+    filters.connector ? `connector=${filters.connector}` : null,
+    filters.connectedAccountId ? `connected_account_id=${filters.connectedAccountId}` : null,
   ]
     .filter(Boolean)
     .join(', ');
@@ -197,53 +207,6 @@ async function listToolsMode(
       {
         type: 'text' as const,
         text: `Tools${searchDesc ? ` matching ${searchDesc}` : ''} — ${count} total\n\n${body || '(no tools found)'}${pagination}${prev}`,
-      },
-    ],
-  };
-}
-
-async function listAvailableToolsMode(
-  token: string,
-  environmentDomain: string,
-  identifier: string,
-  pageSize: number,
-  pageToken?: string
-) {
-  const params = new URLSearchParams({
-    identifier,
-    page_size: String(pageSize),
-  });
-  if (pageToken) params.set('page_token', pageToken);
-
-  const res = await fetch(
-    `${ENDPOINTS.tools.listAvailable}?${params.toString()}`,
-    { headers: envHeaders(token, environmentDomain) }
-  );
-
-  if (!res.ok) {
-    const errorText = await res.text();
-    logger.error(
-      `Failed to list available tools: ${res.status} ${errorText}`
-    );
-    throw new Error(`Failed to list available tools: ${res.statusText}`);
-  }
-
-  const data = (await res.json()) as ListAvailableToolsResponse;
-  const tools = data.tools ?? [];
-  const body = formatTools(tools);
-  const count = data.total_size ?? tools.length;
-  const pagination = data.next_page_token
-    ? `\n\nNext page token: ${data.next_page_token}`
-    : '\n\nNo more pages.';
-  const prev = data.prev_page_token
-    ? `\nPrevious page token: ${data.prev_page_token}`
-    : '';
-
-  return {
-    content: [
-      {
-        type: 'text' as const,
-        text: `Available tools for identifier "${identifier}" — ${count} total\n\n${body || '(no tools found)'}${pagination}${prev}`,
       },
     ],
   };

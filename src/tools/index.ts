@@ -146,7 +146,7 @@ const toolsList = {
   search_tools: {
     name: 'search_tools',
     description:
-      'Search available tools (actions) for connectors in the specified environment. Requires environmentId (format: env_<number>). Two modes: (1) Broad search — provide a query string (min 3 chars) and/or provider name (e.g. "GOOGLE") to search across all tools. (2) Identifier-scoped — provide an identifier (the unique connected account identifier string) to list all tools available for that specific account. Optionally filter by toolNames array or set summary=true for tool names only. Supports pagination via pageSize and pageToken.',
+      'Search available tools (actions) for connectors in the specified environment. Requires environmentId (format: env_<number>). Filter by provider (e.g. "GOOGLE"), query text (min 3 chars), identifier (connected account identifier), connector name, connectedAccountId (e.g. "ca_123"), or specific toolNames. Set summary=true for tool names only. Supports pagination via pageSize and pageToken.',
     scopes: [SCOPES.environmentRead],
   },
   search_docs: {

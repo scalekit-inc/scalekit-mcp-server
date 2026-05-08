@@ -199,8 +199,7 @@ function searchConnectorsTool(server: McpServer): RegisteredTool {
         if (pageToken) params.set('page_token', pageToken);
         if (identifier) params.set('identifier', identifier);
 
-        const providerTypeMap: Record<string, string> = { DEFAULT: '0', CUSTOM: '1', ALL: '2' };
-        if (providerType) params.set('filter.provider_type', providerTypeMap[providerType] ?? '2');
+        if (providerType) params.set('filter.provider_type', providerType);
 
         const res = await fetch(`${ENDPOINTS.providers.list}?${params.toString()}`, {
           headers: envHeaders(token, environmentDomain),

@@ -48,7 +48,6 @@ export const ENDPOINTS = {
   },
   tools: {
     list: `${SK_API_BASE_URL}/api/v1/tools`,
-    listAvailable: `${SK_API_BASE_URL}/api/v1/tools/available`,
   },
   oauthAuthorizationServer: `${AUTH_BASE_URL}/resources/${config.authServerId}${OAUTH_AUTHORIZATION_SERVER_PATH}`,
   oauthProtectedResource: `${API_BASE_URL}${OAUTH_PROTECTED_RESOURCE_PATH}`,
