@@ -145,7 +145,7 @@ async function listToolsMode(
     page_size: String(pageSize),
   });
   if (pageToken) params.set('page_token', pageToken);
-  if (filters.connector) params.set('filter.provider', filters.connector);
+  if (filters.connector) params.set('filter.provider', filters.connector.toUpperCase());
   if (filters.query) params.set('filter.query', filters.query);
 
   const res = await fetch(
