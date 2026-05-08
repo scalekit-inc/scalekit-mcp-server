@@ -5,6 +5,7 @@ import { registerDocsTools } from './docs.js';
 import { registerEnvironmentTools } from './environments.js';
 import { registerOrganizationTools } from './organizations.js';
 import { registerResourceTools } from './resource.js';
+import { registerToolSearchTools } from './tool-search.js';
 import { registerWorkspaceTools } from './workspace.js';
 
 const toolsList = {
@@ -136,6 +137,18 @@ const toolsList = {
     description: 'Switch the authentication of an existing MCP server to Scalekit authentication. Requires environmentId parameter (format: env_<number>). It needs the following parameters: id (id of the MCP server). The tool will update the MCP server to use Scalekit authentication solution.',
     scopes: [SCOPES.environmentWrite],
   },
+  search_connectors: {
+    name: 'search_connectors',
+    description:
+      'Search OAuth connectors (connected accounts like Google, Notion, Slack) in the specified environment. Requires environmentId (format: env_<number>) and a query string (minimum 3 characters) that matches against identifiers, providers, or connector names. Optionally filter by connectionId. Supports pagination via pageSize and pageToken. Show the response in tabular structured manner.',
+    scopes: [SCOPES.environmentRead],
+  },
+  search_tools: {
+    name: 'search_tools',
+    description:
+      'Search available tools (actions) for connectors in the specified environment. Requires environmentId (format: env_<number>). Two modes: (1) Broad search — provide a query string (min 3 chars) and/or provider name (e.g. "GOOGLE") to search across all tools. (2) Identifier-scoped — provide an identifier (the unique connected account identifier string) to list all tools available for that specific account. Optionally filter by toolNames array or set summary=true for tool names only. Supports pagination via pageSize and pageToken.',
+    scopes: [SCOPES.environmentRead],
+  },
   search_docs: {
     name: 'search_docs',
     description: 'Search Scalekit documentation by keyword. Prefer reading docs:// resources directly — use this tool only when no specific docs:// resource clearly covers the topic.',
@@ -200,5 +213,6 @@ export function registerTools(server: McpServer) {
     registerWorkspaceTools(server);
     registerConnectionTools(server);
     registerResourceTools(server);
+    registerToolSearchTools(server);
     registerDocsTools(server);
 }

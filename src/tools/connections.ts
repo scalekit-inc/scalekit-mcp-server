@@ -12,6 +12,7 @@ import {
   EnableConnectionResponse,
   ListConnectedAccountsResponse,
   ListConnectionsResponse,
+  SearchConnectedAccountsResponse,
 } from '../types/index.js';
 import { connectionIdSchema, environmentIdSchema, organizationIdSchema } from '../validators/types.js';
 import { TOOLS } from './index.js';
@@ -57,6 +58,7 @@ function formatConnectedAccounts(accounts: ConnectedAccount[]): string {
 export function registerConnectionTools(server: McpServer){
   TOOLS.list_environment_connections.registeredTool = getEnvironmentConnectionsTool(server)
   TOOLS.list_connected_accounts.registeredTool = listConnectedAccountsTool(server);
+  TOOLS.search_connectors.registeredTool = searchConnectorsTool(server);
   TOOLS.create_connected_account_magic_link.registeredTool = createConnectedAccountMagicLinkTool(server);
   TOOLS.list_organization_connections.registeredTool = getOrganizationConnectionsTool(server);
   TOOLS.enable_environment_connection.registeredTool = enableConnectionTool(server);
@@ -145,6 +147,71 @@ function listConnectedAccountsTool(server: McpServer): RegisteredTool {
             {
               type: 'text',
               text: 'Failed to list connected accounts. Please try again later.',
+            },
+          ],
+        };
+      }
+    }
+  );
+}
+
+function searchConnectorsTool(server: McpServer): RegisteredTool {
+  return server.tool(
+    TOOLS.search_connectors.name,
+    TOOLS.search_connectors.description,
+    {
+      environmentId: environmentIdSchema,
+      query: z.string().min(3, 'Query must be at least 3 characters'),
+      connectionId: connectionIdSchema.optional().describe('Optional connection ID to narrow results to a specific connection.'),
+      pageSize: z.number().int().min(1).max(30).optional().default(20),
+      pageToken: z.string().optional().describe('Opaque token from a previous response to fetch the next page.'),
+    },
+    async ({ environmentId, query, connectionId, pageSize, pageToken }, context) => {
+      const authInfo = context.authInfo as AuthInfo;
+      const token = authInfo?.token;
+
+      try {
+        const environmentDomain = await getEnvironmentDomain(token, environmentId);
+        const params = new URLSearchParams({
+          query,
+          page_size: String(pageSize),
+        });
+        if (pageToken) params.set('page_token', pageToken);
+        if (connectionId) params.set('connection_id', connectionId);
+
+        const res = await fetch(`${ENDPOINTS.connections.connectedAccountsSearch}?${params.toString()}`, {
+          headers: envHeaders(token, environmentDomain),
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          logger.error(`Failed to search connectors: ${res.status} ${errorText}`);
+          throw new Error(`Failed to search connectors: ${res.statusText}`);
+        }
+
+        const data = (await res.json()) as SearchConnectedAccountsResponse;
+        const accounts = data.connected_accounts ?? [];
+        const rows = formatConnectedAccounts(accounts);
+        const pagination = data.next_page_token
+          ? `\n\nNext page token: ${data.next_page_token}`
+          : '\n\nNo more pages.';
+        const prev = data.prev_page_token ? `\nPrevious page token: ${data.prev_page_token}` : '';
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Search results for "${query}" — ${data.total_size ?? accounts.length} total\n\n${rows || '(no matching connectors found)'}${pagination}${prev}`,
+            },
+          ],
+        };
+      } catch (error) {
+        logger.error('Failed to search connectors', error);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'Failed to search connectors. Please try again later.',
             },
           ],
         };

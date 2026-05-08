@@ -235,6 +235,38 @@ export interface Resource {
 }
 
 
+export interface SearchConnectedAccountsResponse {
+  connected_accounts: ConnectedAccount[];
+  total_size: number;
+  next_page_token: string;
+  prev_page_token: string;
+}
+
+export interface ScalekitTool {
+  id: string;
+  provider: string;
+  definition: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  tags?: string[];
+  is_default?: boolean;
+  updated_at?: string;
+}
+
+export interface ListToolsResponse {
+  tools: ScalekitTool[];
+  tool_names: string[];
+  total_size: number;
+  next_page_token: string;
+  prev_page_token: string;
+}
+
+export interface ListAvailableToolsResponse {
+  tools: ScalekitTool[];
+  total_size: number;
+  next_page_token: string;
+  prev_page_token: string;
+}
+
 export interface CreateConnectionResponse {
   connection: DetailedConnection;
 }
