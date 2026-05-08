@@ -83,6 +83,17 @@ function searchToolsTool(server: McpServer): RegisteredTool {
       { environmentId, query, provider, identifier, toolNames, summary, pageSize, pageToken },
       context
     ) => {
+      if (!query && !provider && !identifier && !toolNames?.length) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: 'At least one search criterion is required: provide a query, provider, identifier, or toolNames.',
+            },
+          ],
+        };
+      }
+
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
 
