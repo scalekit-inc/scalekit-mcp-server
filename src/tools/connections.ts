@@ -176,29 +176,42 @@ function formatProviders(providers: Provider[]): string {
     .join('\n');
 }
 
+function matchesQuery(provider: Provider, query: string): boolean {
+  const q = query.toLowerCase();
+  if (provider.display_name?.toLowerCase().includes(q)) return true;
+  if (provider.identifier?.toLowerCase().includes(q)) return true;
+  if (provider.description?.toLowerCase().includes(q)) return true;
+  if (provider.categories?.some((c) => c.toLowerCase().includes(q))) return true;
+  return false;
+}
+
 function searchConnectorsTool(server: McpServer): RegisteredTool {
   return server.tool(
     TOOLS.search_connectors.name,
     TOOLS.search_connectors.description,
     {
       environmentId: environmentIdSchema,
-      identifier: z.string().optional().describe('Exact provider identifier to look up (e.g. "google_workspace", "slack").'),
+      query: z.string().optional().describe('Search keyword to match against connector name, identifier, description, or categories (e.g. "gmail", "slack", "hubspot").'),
+      identifier: z.string().optional().describe('Exact provider identifier for a precise lookup (e.g. "GOOGLE_WORKSPACE", "SLACK"). Use "query" for keyword search instead.'),
       providerType: z.enum(['DEFAULT', 'CUSTOM', 'ALL']).optional().default('ALL').describe('Filter by provider type: DEFAULT (built-in), CUSTOM (environment-scoped), or ALL.'),
-      pageSize: z.number().int().min(1).max(30).optional().default(20),
+      pageSize: z.number().int().min(1).max(1000).optional().default(20),
       pageToken: z.string().optional().describe('Opaque token from a previous response to fetch the next page.'),
     },
-    async ({ environmentId, identifier, providerType, pageSize, pageToken }, context) => {
+    async ({ environmentId, query, identifier, providerType, pageSize, pageToken }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
 
       try {
         const environmentDomain = await getEnvironmentDomain(token, environmentId);
-        const params = new URLSearchParams({
-          page_size: String(pageSize),
-        });
-        if (pageToken) params.set('page_token', pageToken);
-        if (identifier) params.set('identifier', identifier);
 
+        // When the user provides a search query, fetch all providers and filter client-side
+        // because the API's identifier param only supports exact match.
+        const isSearch = !!query && !identifier;
+        const params = new URLSearchParams({
+          page_size: String(isSearch ? 1000 : pageSize),
+        });
+        if (!isSearch && pageToken) params.set('page_token', pageToken);
+        if (identifier) params.set('identifier', identifier);
         if (providerType) params.set('filter.provider_type', providerType);
 
         const res = await fetch(`${ENDPOINTS.providers.list}?${params.toString()}`, {
@@ -212,21 +225,53 @@ function searchConnectorsTool(server: McpServer): RegisteredTool {
         }
 
         const data = (await res.json()) as ListProvidersResponse;
-        const providers = data.providers ?? [];
+        let providers = data.providers ?? [];
+
+        // Client-side search: filter, then paginate locally to bound context window size
+        if (isSearch) {
+          providers = providers.filter((p) => matchesQuery(p, query));
+          const totalMatches = providers.length;
+
+          let offset = 0;
+          if (pageToken?.startsWith('csearch_')) {
+            offset = parseInt(pageToken.slice(8), 10) || 0;
+          }
+          const page = providers.slice(offset, offset + pageSize);
+          const hasMore = offset + pageSize < totalMatches;
+
+          const rows = formatProviders(page);
+          const range = totalMatches > 0
+            ? ` (showing ${offset + 1}–${offset + page.length})`
+            : '';
+          const pagination = hasMore
+            ? `\n\nNext page token: csearch_${offset + pageSize}`
+            : '';
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Connectors matching "${query}" (${providerType ?? 'ALL'}) — ${totalMatches} found${range}\n\n${rows || '(no connectors found)'}${pagination}`,
+              },
+            ],
+          };
+        }
+
+        // Non-search paths (identifier exact match or list all): use API-native pagination
         const rows = formatProviders(providers);
         const count = data.total_size ?? providers.length;
         const pagination = data.next_page_token
           ? `\n\nNext page token: ${data.next_page_token}`
-          : '\n\nNo more pages.';
-        const prev = data.prev_page_token ? `\nPrevious page token: ${data.prev_page_token}` : '';
-
-        const filterDesc = identifier ? ` for identifier "${identifier}"` : '';
+          : '';
+        const filterDesc = identifier
+          ? ` for identifier "${identifier}"`
+          : '';
 
         return {
           content: [
             {
               type: 'text',
-              text: `Connectors${filterDesc} (${providerType ?? 'ALL'}) — ${count} total\n\n${rows || '(no connectors found)'}${pagination}${prev}`,
+              text: `Connectors${filterDesc} (${providerType ?? 'ALL'}) — ${count} found\n\n${rows || '(no connectors found)'}${pagination}`,
             },
           ],
         };
