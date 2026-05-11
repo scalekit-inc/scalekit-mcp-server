@@ -65,7 +65,7 @@ function searchToolsTool(server: McpServer): RegisteredTool {
       connector: z
         .string()
         .optional()
-        .describe('Filter by connector (e.g. "GOOGLE", "HUBSPOT", "NOTION").'),
+        .describe('Filter by connector identifier as returned by search_connectors (e.g. "GMAIL", "HUBSPOT", "NOTION", "SLACK").'),
       query: z
         .string()
         .min(3, 'Query must be at least 3 characters')

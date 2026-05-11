@@ -289,7 +289,7 @@ function searchConnectorsTool(server: McpServer): RegisteredTool {
     {
       environmentId: environmentIdSchema,
       query: z.string().min(1).optional().describe('Search keyword to match against connector name, identifier, description, or categories (e.g. "gmail", "slack", "hubspot").'),
-      connectorType: z.enum(['DEFAULT', 'CUSTOM', 'ALL']).optional().default('ALL').describe('Filter by connector type: DEFAULT (built-in), CUSTOM (user-created), or ALL.'),
+      connectorType: z.enum(['SCALEKIT', 'CUSTOM', 'ALL']).optional().default('ALL').describe('Filter by connector type: SCALEKIT (pre-built connectors provided and maintained by Scalekit, shared across all environments), CUSTOM (connectors created by environment users, scoped to a single environment and not shared between environments), or ALL (both types).'),
       pageSize: z.number().int().min(1).max(1000).optional().default(20),
       pageToken: z.string().optional().describe('Opaque token from a previous response to fetch the next page.'),
       includeSetupStatus: z.boolean().optional().default(false).describe('When true, also checks which connectors have been set up (have active connections) in the environment.'),
@@ -303,7 +303,7 @@ function searchConnectorsTool(server: McpServer): RegisteredTool {
           content: [
             {
               type: 'text' as const,
-              text: 'At least one search criterion is required: provide a query or set connectorType to DEFAULT or CUSTOM.',
+              text: 'At least one search criterion is required: provide a query or set connectorType to SCALEKIT or CUSTOM.',
             },
           ],
         };
@@ -319,7 +319,7 @@ function searchConnectorsTool(server: McpServer): RegisteredTool {
           page_size: String(isSearch ? 1000 : pageSize),
         });
         if (!isSearch && pageToken) params.set('page_token', pageToken);
-        if (connectorType) params.set('filter.provider_type', connectorType);
+        if (connectorType) params.set('filter.provider_type', connectorType === 'SCALEKIT' ? 'DEFAULT' : connectorType);
 
         const providersFetch = fetch(`${ENDPOINTS.providers.list}?${params.toString()}`, {
           headers: envHeaders(token, environmentDomain),
