@@ -12,18 +12,6 @@ import {
 import { environmentIdSchema } from '../validators/types.js';
 import { TOOLS } from './index.js';
 
-/** Extracts the email claim from a JWT access token (already validated by middleware). */
-function getEmailFromToken(token: string): string | undefined {
-  try {
-    const payload = token.split('.')[1];
-    if (!payload) return undefined;
-    const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    return decoded.email ?? undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 /** Returns true when the connector identifier looks environment-scoped (custom). */
 function isCustomConnector(connector: string): boolean {
   return connector.includes(':');
@@ -83,6 +71,10 @@ function searchToolsTool(server: McpServer): RegisteredTool {
         .string()
         .optional()
         .describe('Filter by connector identifier as returned by search_connectors (e.g. "GMAIL", "HUBSPOT", "NOTION", "SLACK").'),
+      identifier: z
+        .string()
+        .optional()
+        .describe('The connected account identifier (e.g. a user ID, email, or app-specific key stored by the developer). Required when searching tools for a custom connector. This is the same identifier used when creating the connected account.'),
       query: z
         .string()
         .min(3, 'Query must be at least 3 characters')
@@ -102,7 +94,7 @@ function searchToolsTool(server: McpServer): RegisteredTool {
         .describe('Opaque token from a previous response to fetch the next page.'),
     },
     async (
-      { environmentId, connector, query, summary, pageSize, pageToken },
+      { environmentId, connector, identifier, query, summary, pageSize, pageToken },
       context
     ) => {
       if (!connector && !query) {
@@ -128,7 +120,7 @@ function searchToolsTool(server: McpServer): RegisteredTool {
         return await listToolsMode(
           token,
           environmentDomain,
-          { connector, query, summary },
+          { connector, identifier, query, summary },
           pageSize,
           pageToken
         );
@@ -180,6 +172,7 @@ async function listToolsMode(
   environmentDomain: string,
   filters: {
     connector?: string;
+    identifier?: string;
     query?: string;
     summary?: boolean;
   },
@@ -194,8 +187,15 @@ async function listToolsMode(
   if (connector && isCustomConnector(connector)) {
     // Custom connector: use filter.connector + filter.identifier so the backend
     // resolves the connected account and includes custom MCP tools.
-    const email = getEmailFromToken(token);
-    data = await fetchTools(token, environmentDomain, { connector, identifier: email, query: filters.query }, pageSize, pageToken);
+    if (!filters.identifier) {
+      return {
+        content: [{
+          type: 'text' as const,
+          text: 'An identifier is required when searching tools for a custom connector. Provide the connected account identifier (e.g. user ID, email, or app-specific key used when the connected account was created).',
+        }],
+      };
+    }
+    data = await fetchTools(token, environmentDomain, { connector, identifier: filters.identifier, query: filters.query }, pageSize, pageToken);
     tools = data.tools ?? [];
   } else if (connector) {
     // Standard connector: filter by provider
