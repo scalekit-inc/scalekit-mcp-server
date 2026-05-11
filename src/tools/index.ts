@@ -5,6 +5,7 @@ import { registerDocsTools } from './docs.js';
 import { registerEnvironmentTools } from './environments.js';
 import { registerOrganizationTools } from './organizations.js';
 import { registerResourceTools } from './resource.js';
+import { registerToolSearchTools } from './tool-search.js';
 import { registerWorkspaceTools } from './workspace.js';
 
 const toolsList = {
@@ -81,7 +82,7 @@ const toolsList = {
   list_connected_accounts: {
     name: 'list_connected_accounts',
     description:
-      'List connected accounts (OAuth connector accounts such as Gmail, Notion) at the environment level. Requires environmentId (format: env_<number>). Supports pagination: pageSize (default 20) and optional pageToken from the previous response. Show the response in tabular structured manner. After each page, ask whether to fetch the next page.',
+      'List users (connected accounts) who have authorized with connectors in the given environment. Filter by connector type (e.g. "HUBSPOT") or specific connection ID. Returns accounts grouped by connector showing identifier, status, and auth details.',
     scopes: [SCOPES.environmentRead],
   },
   create_connected_account_magic_link: {
@@ -135,6 +136,18 @@ const toolsList = {
     name: 'switch_mcp_auth_to_scalekit',
     description: 'Switch the authentication of an existing MCP server to Scalekit authentication. Requires environmentId parameter (format: env_<number>). It needs the following parameters: id (id of the MCP server). The tool will update the MCP server to use Scalekit authentication solution.',
     scopes: [SCOPES.environmentWrite],
+  },
+  search_connectors: {
+    name: 'search_connectors',
+    description:
+      'Search the connector catalog (e.g. Google, Notion, Slack) for the given environment. Returns matching connectors with their identifier, category, and type. When includeSetupStatus is true, each result is annotated with whether the connector has been set up in the environment.',
+    scopes: [SCOPES.environmentRead],
+  },
+  search_tools: {
+    name: 'search_tools',
+    description:
+      'Search available tools (actions) exposed by connectors in the given environment. Filter by connector name (e.g. "HUBSPOT") or search by action (e.g. "search contacts"). Returns tools grouped by connector. Set summary=false for full tool definitions including input schemas. Output schemas are not available — refer to the connector\'s official API documentation for response structures.',
+    scopes: [SCOPES.environmentRead],
   },
   search_docs: {
     name: 'search_docs',
@@ -200,5 +213,6 @@ export function registerTools(server: McpServer) {
     registerWorkspaceTools(server);
     registerConnectionTools(server);
     registerResourceTools(server);
+    registerToolSearchTools(server);
     registerDocsTools(server);
 }

@@ -235,6 +235,65 @@ export interface Resource {
 }
 
 
+export interface Provider {
+  id: string;
+  identifier: string;
+  display_name: string;
+  description: string;
+  categories: string[];
+  icon_src: string;
+  display_priority: number;
+  coming_soon: boolean;
+  proxy_url: string;
+  proxy_enabled: boolean;
+  is_custom: boolean;
+  is_custom_mcp: boolean;
+}
+
+/** App-level connection from GET /api/v1/connections/app (AgentKit connectors set up in the environment). */
+export interface AppConnection {
+  id: string;
+  provider: string;
+  type: string;
+  status: string;
+  enabled: boolean;
+  organization_id: string;
+  provider_key: string;
+  key_id: string;
+  created_at: string;
+}
+
+export interface ListAppConnectionsResponse {
+  connections: AppConnection[];
+  total_size: number;
+  next_page_token: string;
+}
+
+export interface ListProvidersResponse {
+  providers: Provider[];
+  total_size: number;
+  next_page_token: string;
+  prev_page_token: string;
+}
+
+export interface ScalekitTool {
+  id: string;
+  provider: string;
+  definition: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  tags?: string[];
+  is_default?: boolean;
+  updated_at?: string;
+}
+
+export interface ListToolsResponse {
+  tools: ScalekitTool[];
+  tool_names: string[];
+  total_size: number;
+  next_page_token: string;
+  prev_page_token: string;
+}
+
 export interface CreateConnectionResponse {
   connection: DetailedConnection;
 }

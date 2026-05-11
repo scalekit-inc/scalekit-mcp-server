@@ -5,13 +5,17 @@ import { envHeaders, getEnvironmentDomain } from '../lib/api.js';
 import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
 import {
+  AppConnection,
   AuthInfo,
   ConnectedAccount,
   Connection,
   CreateConnectedAccountMagicLinkResponse,
   EnableConnectionResponse,
+  ListAppConnectionsResponse,
   ListConnectedAccountsResponse,
   ListConnectionsResponse,
+  ListProvidersResponse,
+  Provider,
 } from '../types/index.js';
 import { connectionIdSchema, environmentIdSchema, organizationIdSchema } from '../validators/types.js';
 import { TOOLS } from './index.js';
@@ -32,7 +36,35 @@ function formatConnections(connections: Connection[]): string {
     .join('\n');
 }
 
-function formatConnectedAccounts(accounts: ConnectedAccount[]): string {
+/** Summary format: group connected accounts by connector, show key details per account. */
+function formatConnectedAccountsSummary(accounts: ConnectedAccount[]): string {
+  const grouped = new Map<string, ConnectedAccount[]>();
+  for (const ca of accounts) {
+    const key = ca.provider || ca.connector || 'UNKNOWN';
+    const list = grouped.get(key) ?? [];
+    list.push(ca);
+    grouped.set(key, list);
+  }
+  const sections: string[] = [];
+  for (const [connector, connectorAccounts] of grouped) {
+    const lines = connectorAccounts.map((ca) => {
+      const parts = [
+        ca.identifier,
+        `status: ${ca.status}`,
+        `auth: ${ca.authorization_type}`,
+        ca.connection_id ? `connection: ${ca.connection_id}` : null,
+        ca.last_used_at ? `last_used: ${ca.last_used_at}` : null,
+        ca.token_expires_at ? `token_expires: ${ca.token_expires_at}` : null,
+      ].filter(Boolean).join(' | ');
+      return `  - ${parts}`;
+    });
+    sections.push(`${connector} (${connectorAccounts.length} account${connectorAccounts.length === 1 ? '' : 's'}):\n${lines.join('\n')}`);
+  }
+  return sections.join('\n\n');
+}
+
+/** Full format: all fields per account, flat list. */
+function formatConnectedAccountsFull(accounts: ConnectedAccount[]): string {
   return accounts
     .map((ca) => {
       const details = [
@@ -57,6 +89,7 @@ function formatConnectedAccounts(accounts: ConnectedAccount[]): string {
 export function registerConnectionTools(server: McpServer){
   TOOLS.list_environment_connections.registeredTool = getEnvironmentConnectionsTool(server)
   TOOLS.list_connected_accounts.registeredTool = listConnectedAccountsTool(server);
+  TOOLS.search_connectors.registeredTool = searchConnectorsTool(server);
   TOOLS.create_connected_account_magic_link.registeredTool = createConnectedAccountMagicLinkTool(server);
   TOOLS.list_organization_connections.registeredTool = getOrganizationConnectionsTool(server);
   TOOLS.enable_environment_connection.registeredTool = enableConnectionTool(server);
@@ -100,10 +133,25 @@ function listConnectedAccountsTool(server: McpServer): RegisteredTool {
     TOOLS.list_connected_accounts.description,
     {
       environmentId: environmentIdSchema,
+      connector: z
+        .string()
+        .optional()
+        .describe('Filter by connector type (e.g. "HUBSPOT", "GMAIL", "NOTION").'),
+      connectionId: z
+        .string()
+        .optional()
+        .describe('Filter by a specific connection ID to see only accounts linked to that connection.'),
+      summary: z
+        .boolean()
+        .optional()
+        .default(true)
+        .describe(
+          'When true (default), returns accounts grouped by connector with key details. Set to false for full account details.'
+        ),
       pageSize: z.number().int().min(1).max(100).optional().default(20),
-      pageToken: z.string().optional().describe('Opaque token from a previous response next_page_token to fetch the next page.'),
+      pageToken: z.string().optional().describe('Opaque token from a previous response to fetch the next page.'),
     },
-    async ({ environmentId, pageSize, pageToken }, context) => {
+    async ({ environmentId, connector, connectionId, summary, pageSize, pageToken }, context) => {
       const authInfo = context.authInfo as AuthInfo;
       const token = authInfo?.token;
 
@@ -123,18 +171,42 @@ function listConnectedAccountsTool(server: McpServer): RegisteredTool {
         }
 
         const data = (await res.json()) as ListConnectedAccountsResponse;
-        const accounts = data.connected_accounts ?? [];
-        const rows = formatConnectedAccounts(accounts);
+        let accounts = data.connected_accounts ?? [];
+
+        // Client-side filtering
+        if (connector) {
+          const upper = connector.toUpperCase();
+          accounts = accounts.filter(
+            (ca) => ca.provider?.toUpperCase() === upper || ca.connector?.toUpperCase() === upper
+          );
+        }
+        if (connectionId) {
+          accounts = accounts.filter((ca) => ca.connection_id === connectionId);
+        }
+
+        const body = summary
+          ? formatConnectedAccountsSummary(accounts)
+          : formatConnectedAccountsFull(accounts);
+
         const pagination = data.next_page_token
           ? `\n\nNext page token: ${data.next_page_token}`
-          : '\n\nNo more pages.';
-        const prev = data.prev_page_token ? `\nPrevious page token: ${data.prev_page_token}` : '';
+          : '';
+        const prev = data.prev_page_token
+          ? `\nPrevious page token: ${data.prev_page_token}`
+          : '';
+
+        const filterDesc = [
+          connector ? `connector=${connector}` : null,
+          connectionId ? `connection=${connectionId}` : null,
+        ]
+          .filter(Boolean)
+          .join(', ');
 
         return {
           content: [
             {
-              type: 'text',
-              text: `Total connected accounts: ${data.total_size ?? accounts.length}\n\n${rows || '(none)'}${pagination}${prev}`,
+              type: 'text' as const,
+              text: `Connected accounts${filterDesc ? ` (${filterDesc})` : ''} — ${accounts.length} found\n\n${body || '(no connected accounts found)'}${pagination}${prev}`,
             },
           ],
         };
@@ -145,6 +217,182 @@ function listConnectedAccountsTool(server: McpServer): RegisteredTool {
             {
               type: 'text',
               text: 'Failed to list connected accounts. Please try again later.',
+            },
+          ],
+        };
+      }
+    }
+  );
+}
+
+function formatProviders(providers: Provider[], setupMap?: Map<string, AppConnection[]>): string {
+  return providers
+    .map((p) => {
+      const details = [
+        `identifier: ${p.identifier}`,
+        `display_name: ${p.display_name}`,
+        p.description ? `description: ${p.description}` : null,
+        p.categories?.length ? `categories: ${p.categories.join(', ')}` : null,
+        p.is_custom ? `custom: true` : null,
+        p.is_custom_mcp ? `custom_mcp: true` : null,
+        p.coming_soon ? `coming_soon: true` : null,
+        p.proxy_enabled ? `proxy_url: ${p.proxy_url}` : null,
+      ];
+      if (setupMap) {
+        const conns = setupMap.get(p.identifier);
+        if (conns?.length) {
+          const summaries = conns.map((c) => `${c.status} (${c.type}, ${c.key_id})`).join('; ');
+          details.push(`setup: ${summaries}`);
+        } else {
+          details.push('setup: not_configured');
+        }
+      }
+      return `- ${details.filter(Boolean).join(' | ')}`;
+    })
+    .join('\n');
+}
+
+async function fetchAppConnections(token: string, environmentDomain: string): Promise<Map<string, AppConnection[]>> {
+  const params = new URLSearchParams({ page_size: '1000' });
+  const res = await fetch(`${ENDPOINTS.connections.listApp}?${params.toString()}`, {
+    headers: envHeaders(token, environmentDomain),
+  });
+  if (!res.ok) {
+    logger.warn(`Failed to fetch app connections for setup status: ${res.status}`);
+    return new Map();
+  }
+  const data = (await res.json()) as ListAppConnectionsResponse;
+  const map = new Map<string, AppConnection[]>();
+  for (const conn of data.connections ?? []) {
+    const key = conn.provider_key?.split(':')[0];
+    if (!key) continue;
+    const existing = map.get(key) ?? [];
+    existing.push(conn);
+    map.set(key, existing);
+  }
+  return map;
+}
+
+function matchesQuery(provider: Provider, query: string): boolean {
+  const q = query.toLowerCase();
+  if (provider.display_name?.toLowerCase().includes(q)) return true;
+  if (provider.identifier?.toLowerCase().includes(q)) return true;
+  if (provider.description?.toLowerCase().includes(q)) return true;
+  if (provider.categories?.some((c) => c.toLowerCase().includes(q))) return true;
+  return false;
+}
+
+function searchConnectorsTool(server: McpServer): RegisteredTool {
+  return server.tool(
+    TOOLS.search_connectors.name,
+    TOOLS.search_connectors.description,
+    {
+      environmentId: environmentIdSchema,
+      query: z.string().min(1).optional().describe('Search keyword to match against connector name, identifier, description, or categories (e.g. "gmail", "slack", "hubspot").'),
+      connectorType: z.enum(['SCALEKIT', 'CUSTOM', 'ALL']).optional().default('ALL').describe('Filter by connector type: SCALEKIT (pre-built connectors provided and maintained by Scalekit, shared across all environments), CUSTOM (connectors created by environment users, scoped to a single environment and not shared between environments), or ALL (both types).'),
+      pageSize: z.number().int().min(1).max(1000).optional().default(20),
+      pageToken: z.string().optional().describe('Opaque token from a previous response to fetch the next page.'),
+      includeSetupStatus: z.boolean().optional().default(false).describe('When true, also checks which connectors have been set up (have active connections) in the environment.'),
+    },
+    async ({ environmentId, query, connectorType, pageSize, pageToken, includeSetupStatus }, context) => {
+      const authInfo = context.authInfo as AuthInfo;
+      const token = authInfo?.token;
+
+      if (!query && (!connectorType || connectorType === 'ALL')) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: 'At least one search criterion is required: provide a query or set connectorType to SCALEKIT or CUSTOM.',
+            },
+          ],
+        };
+      }
+
+      try {
+        const environmentDomain = await getEnvironmentDomain(token, environmentId);
+
+        // Fetch all providers and filter client-side when a query is provided,
+        // because the API's identifier param only supports exact match.
+        const isSearch = !!query;
+        const params = new URLSearchParams({
+          page_size: String(isSearch ? 1000 : pageSize),
+        });
+        if (!isSearch && pageToken) params.set('page_token', pageToken);
+        if (connectorType) params.set('filter.provider_type', connectorType === 'SCALEKIT' ? 'DEFAULT' : connectorType);
+
+        const providersFetch = fetch(`${ENDPOINTS.providers.list}?${params.toString()}`, {
+          headers: envHeaders(token, environmentDomain),
+        });
+
+        // Fetch app connections in parallel when setup status is requested
+        const setupMapPromise = includeSetupStatus
+          ? fetchAppConnections(token, environmentDomain)
+          : Promise.resolve(undefined);
+
+        const [res, setupMap] = await Promise.all([providersFetch, setupMapPromise]);
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          logger.error(`Failed to search connectors: ${res.status} ${errorText}`);
+          throw new Error(`Failed to search connectors: ${res.statusText}`);
+        }
+
+        const data = (await res.json()) as ListProvidersResponse;
+        let providers = data.providers ?? [];
+
+        // Client-side search: filter, then paginate locally to bound context window size
+        if (isSearch) {
+          providers = providers.filter((p) => matchesQuery(p, query));
+          const totalMatches = providers.length;
+
+          let offset = 0;
+          if (pageToken?.startsWith('csearch_')) {
+            offset = parseInt(pageToken.slice(8), 10) || 0;
+          }
+          const page = providers.slice(offset, offset + pageSize);
+          const hasMore = offset + pageSize < totalMatches;
+
+          const rows = formatProviders(page, setupMap);
+          const range = totalMatches > 0
+            ? ` (showing ${offset + 1}–${offset + page.length})`
+            : '';
+          const pagination = hasMore
+            ? `\n\nNext page token: csearch_${offset + pageSize}`
+            : '';
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Connectors matching "${query}" (${connectorType ?? 'ALL'}) — ${totalMatches} found${range}\n\n${rows || '(no connectors found)'}${pagination}`,
+              },
+            ],
+          };
+        }
+
+        // Non-search path (connectorType filter only): use API-native pagination
+        const rows = formatProviders(providers, setupMap);
+        const count = data.total_size ?? providers.length;
+        const pagination = data.next_page_token
+          ? `\n\nNext page token: ${data.next_page_token}`
+          : '';
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Connectors (${connectorType ?? 'ALL'}) — ${count} found\n\n${rows || '(no connectors found)'}${pagination}`,
+            },
+          ],
+        };
+      } catch (error) {
+        logger.error('Failed to search connectors', error);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'Failed to search connectors. Please try again later.',
             },
           ],
         };
