@@ -184,6 +184,14 @@ async function listToolsMode(
     // resolves the connected account and includes custom MCP tools.
     data = await fetchTools(token, environmentDomain, { connector, identifier: filters.identifier, query: filters.query }, pageSize, pageToken);
     tools = data.tools ?? [];
+    if (tools.length === 0) {
+      return {
+        content: [{
+          type: 'text' as const,
+          text: `No tools found for connection "${filters.connector}" with identifier "${filters.identifier}". This usually means either: (1) a custom connection has not been created for this connector in the environment, or (2) a connected account has not been set up for this identifier. Verify both in the Scalekit dashboard before retrying.`,
+        }],
+      };
+    }
   } else if (connector) {
     // Standard connector: filter by provider
     data = await fetchTools(token, environmentDomain, { provider: connector, query: filters.query }, pageSize, pageToken);
