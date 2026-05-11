@@ -12,11 +12,6 @@ import {
 import { environmentIdSchema } from '../validators/types.js';
 import { TOOLS } from './index.js';
 
-/** Returns true when the connector identifier looks environment-scoped (custom). */
-function isCustomConnector(connector: string): boolean {
-  return connector.includes(':');
-}
-
 /** Summary format: group tools by connector, show name + short description. */
 function formatToolsSummary(tools: ScalekitTool[]): string {
   const grouped = new Map<string, ScalekitTool[]>();
@@ -184,17 +179,9 @@ async function listToolsMode(
   let tools: ScalekitTool[];
   let clientFiltered = false;
 
-  if (connector && isCustomConnector(connector)) {
-    // Custom connector: use filter.connector + filter.identifier so the backend
+  if (connector && filters.identifier) {
+    // Identifier provided: use filter.connector + filter.identifier so the backend
     // resolves the connected account and includes custom MCP tools.
-    if (!filters.identifier) {
-      return {
-        content: [{
-          type: 'text' as const,
-          text: 'An identifier is required when searching tools for a custom connector. Provide the connected account identifier (e.g. user ID, email, or app-specific key used when the connected account was created).',
-        }],
-      };
-    }
     data = await fetchTools(token, environmentDomain, { connector, identifier: filters.identifier, query: filters.query }, pageSize, pageToken);
     tools = data.tools ?? [];
   } else if (connector) {
