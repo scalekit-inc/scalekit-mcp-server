@@ -12,6 +12,23 @@ import {
 import { environmentIdSchema } from '../validators/types.js';
 import { TOOLS } from './index.js';
 
+/** Extracts the email claim from a JWT access token (already validated by middleware). */
+function getEmailFromToken(token: string): string | undefined {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return undefined;
+    const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString());
+    return decoded.email ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Returns true when the connector identifier looks environment-scoped (custom). */
+function isCustomConnector(connector: string): boolean {
+  return connector.includes(':');
+}
+
 /** Summary format: group tools by connector, show name + short description. */
 function formatToolsSummary(tools: ScalekitTool[]): string {
   const grouped = new Map<string, ScalekitTool[]>();
@@ -133,7 +150,7 @@ function searchToolsTool(server: McpServer): RegisteredTool {
 async function fetchTools(
   token: string,
   environmentDomain: string,
-  apiFilters: { provider?: string; query?: string },
+  apiFilters: { provider?: string; query?: string; connector?: string; identifier?: string },
   pageSize: number,
   pageToken?: string
 ): Promise<ListToolsResponse> {
@@ -141,6 +158,8 @@ async function fetchTools(
   if (pageToken) params.set('page_token', pageToken);
   if (apiFilters.provider) params.set('filter.provider', apiFilters.provider);
   if (apiFilters.query) params.set('filter.query', apiFilters.query);
+  if (apiFilters.connector) params.set('filter.connector', apiFilters.connector);
+  if (apiFilters.identifier) params.set('filter.identifier', apiFilters.identifier);
 
   const res = await fetch(
     `${ENDPOINTS.tools.list}?${params.toString()}`,
@@ -172,8 +191,14 @@ async function listToolsMode(
   let tools: ScalekitTool[];
   let clientFiltered = false;
 
-  if (connector) {
-    // Try exact match first
+  if (connector && isCustomConnector(connector)) {
+    // Custom connector: use filter.connector + filter.identifier so the backend
+    // resolves the connected account and includes custom MCP tools.
+    const email = getEmailFromToken(token);
+    data = await fetchTools(token, environmentDomain, { connector, identifier: email, query: filters.query }, pageSize, pageToken);
+    tools = data.tools ?? [];
+  } else if (connector) {
+    // Standard connector: filter by provider
     data = await fetchTools(token, environmentDomain, { provider: connector, query: filters.query }, pageSize, pageToken);
     tools = data.tools ?? [];
 
