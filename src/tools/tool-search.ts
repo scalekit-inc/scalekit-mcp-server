@@ -65,7 +65,7 @@ function searchToolsTool(server: McpServer): RegisteredTool {
       connector: z
         .string()
         .optional()
-        .describe('Filter by connector identifier as returned by search_connectors (e.g. "GMAIL", "HUBSPOT", "NOTION", "SLACK").'),
+        .describe('For standard connectors, the connector identifier as returned by search_connectors (e.g. "GMAIL", "HUBSPOT", "NOTION", "SLACK"). For custom connectors, the connection name (e.g. "My Sentry", "Bitly Production").'),
       identifier: z
         .string()
         .optional()
@@ -222,11 +222,17 @@ async function listToolsMode(
     .filter(Boolean)
     .join(', ');
 
+  // When searching by query alone, hint that custom connector tools require
+  // connector + identifier to be found.
+  const customToolHint = !filters.identifier
+    ? '\n\nNote: This search only covers standard connector tools. To search tools from custom connectors, also provide the connection name (in the connector param) and the connected account identifier (the identifier used when the connected account was created).'
+    : '';
+
   return {
     content: [
       {
         type: 'text' as const,
-        text: `Tools${searchDesc ? ` matching ${searchDesc}` : ''} — ${count} total\n\n${body || '(no tools found)'}${pagination}${prev}`,
+        text: `Tools${searchDesc ? ` matching ${searchDesc}` : ''} — ${count} total\n\n${body || '(no tools found)'}${pagination}${prev}${customToolHint}`,
       },
     ],
   };
