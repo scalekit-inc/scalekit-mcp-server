@@ -16,7 +16,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@scalekit-sdk/node": "^2.6.2",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jsonwebtoken": ">=9.0.3",
     "node-fetch": "^3.3.2",
