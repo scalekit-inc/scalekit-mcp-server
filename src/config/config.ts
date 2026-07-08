@@ -16,4 +16,5 @@ export const config = {
   skEnvUrl: process.env.SK_ENV_URL || '',
   skClientId: process.env.SK_CLIENT_ID || '',
   skClientSecret: process.env.SK_CLIENT_SECRET || '',
+  posthogApiKey: process.env.POSTHOG_API_KEY ?? '',
 };

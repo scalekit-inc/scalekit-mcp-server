@@ -3,6 +3,7 @@ import { Scalekit, TokenValidationOptions } from '@scalekit-sdk/node';
 import cors from 'cors';
 import express from 'express';
 import { config } from './config/config.js';
+import { instrumentServer, posthog } from './lib/analytics.js';
 import { oauthProtectedResourceHandler } from './lib/auth.js';
 import { logger } from './lib/logger.js';
 import { setupTransportRoutes } from './lib/transport.js';
@@ -57,6 +58,7 @@ app.use(express.json());
 const scalekit = new Scalekit(config.skEnvUrl, config.skClientId, config.skClientSecret);
 
 (async () => {
+  instrumentServer(server);
   registerTools(server)
   logger.info('Registered tools successfully');
   registerResources(server);
@@ -108,4 +110,9 @@ const scalekit = new Scalekit(config.skEnvUrl, config.skClientId, config.skClien
   logger.debug('Transport routes set up completed');
 
   app.listen(PORT, () => console.log(`MCP server running on http://localhost:${PORT}`));
+
+  process.on('SIGTERM', async () => {
+    if (posthog) await posthog.shutdown();
+    process.exit(0);
+  });
 })();
