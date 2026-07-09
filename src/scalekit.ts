@@ -58,11 +58,11 @@ app.use(express.json());
 const scalekit = new Scalekit(config.skEnvUrl, config.skClientId, config.skClientSecret);
 
 (async () => {
-  instrumentServer(server);
   registerTools(server)
   logger.info('Registered tools successfully');
   registerResources(server);
   logger.info('Registered resources successfully');
+  instrumentServer(server);
 
   app.use(async (req, res, next) => {
     try {
