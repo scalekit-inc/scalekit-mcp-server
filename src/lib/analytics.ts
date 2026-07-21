@@ -9,14 +9,28 @@ export const posthog = config.posthogApiKey
   : null;
 
 interface AccessTokenClaims {
-  sub:  string;
-  xoid: string;
+  sub:        string;
+  xoid:       string;
+  iss?:       string;
+  user_email?: string;
 }
 
 function decodeClaims(extra: unknown): AccessTokenClaims | null {
   const token = (extra as any)?.authInfo?.token ?? null;
   if (!token) return null;
   return jwt.decode(token) as AccessTokenClaims | null;
+}
+
+// EU issuers carry an "eu" hostname label (eu.auth.scalekit.cloud,
+// auth.eu.scalekit.com); anything else — including a missing or
+// malformed iss — is treated as US.
+function isEuIssuer(iss: string | undefined): boolean {
+  if (!iss) return false;
+  try {
+    return new URL(iss).hostname.toLowerCase().split('.').includes('eu');
+  } catch {
+    return false;
+  }
 }
 
 export function instrumentServer(server: McpServer): void {
@@ -31,8 +45,13 @@ export function instrumentServer(server: McpServer): void {
       const claims = decodeClaims(extra);
       if (!claims?.sub) return null;
 
+      // PII (email) is only attached for non-EU regions; EU users are
+      // identified by user id alone.
+      const email = isEuIssuer(claims.iss) ? undefined : claims.user_email;
+
       return {
         distinctId: claims.sub,
+        ...(email ? { properties: { email } } : {}),
         groups: {
           workspace: claims.xoid,
         },
