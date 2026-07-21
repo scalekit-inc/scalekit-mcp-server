@@ -24,18 +24,18 @@ function decodeClaims(extra: unknown): AccessTokenClaims | null {
 
 type Region = 'us' | 'eu' | 'unknown';
 
-// Known US issuer hostnames; EU issuers carry an "eu" hostname label
-// (eu.auth.scalekit.cloud, auth.eu.scalekit.com). Anything else — missing,
-// unparseable, or unrecognized — is 'unknown', and PII is only ever
-// attached for a confirmed 'us' issuer (fail closed).
+// Known issuer hostnames per region. Anything else — missing, unparseable,
+// or unrecognized — is 'unknown', and PII is only ever attached for a
+// confirmed 'us' issuer (fail closed).
 const US_ISSUER_HOSTS = new Set(['auth.scalekit.com', 'auth.scalekit.cloud']);
+const EU_ISSUER_HOSTS = new Set(['auth.eu.scalekit.com', 'auth.eu.scalekit.cloud']);
 
 function getRegionFromIssuer(iss: string | undefined): Region {
   if (!iss) return 'unknown';
   try {
     const hostname = new URL(iss).hostname.toLowerCase();
     if (US_ISSUER_HOSTS.has(hostname)) return 'us';
-    if (hostname.split('.').includes('eu')) return 'eu';
+    if (EU_ISSUER_HOSTS.has(hostname)) return 'eu';
     return 'unknown';
   } catch {
     logger.warn(`PostHog identify: unparseable iss claim "${iss}" — withholding PII`);
