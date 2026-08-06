@@ -120,6 +120,7 @@ function getEnvironmentConnectionsTool(server: McpServer): RegisteredTool {
       } catch (error) {
         logger.error('Failed to fetch connection details', error);
         return {
+          isError: true,
           content: [{ type: 'text', text: 'Failed to fetch connection details. Please try again later.' }],
         };
       }
@@ -213,6 +214,7 @@ function listConnectedAccountsTool(server: McpServer): RegisteredTool {
       } catch (error) {
         logger.error('Failed to list connected accounts', error);
         return {
+          isError: true,
           content: [
             {
               type: 'text',
@@ -440,6 +442,7 @@ function createConnectedAccountMagicLinkTool(server: McpServer): RegisteredTool 
       } catch (error) {
         logger.error('Failed to create connected account magic link', error);
         return {
+          isError: true,
           content: [
             {
               type: 'text',
@@ -480,6 +483,7 @@ function getOrganizationConnectionsTool(server: McpServer): RegisteredTool {
       } catch (error) {
         logger.error('Failed to fetch connection details', error);
         return {
+          isError: true,
           content: [{ type: 'text', text: 'Failed to fetch connection details. Please try again later.' }],
         };
       }
@@ -514,6 +518,7 @@ function enableConnectionTool(server: McpServer): RegisteredTool {
                     const errorText = await res.text();
                     logger.error(`Failed to enable connection: ${res.status} ${errorText}`);
                     return {
+                        isError: true,
                         content: [
                             {
                                 type: 'text',
@@ -535,6 +540,7 @@ function enableConnectionTool(server: McpServer): RegisteredTool {
             } catch (error) {
                 logger.error(`Failed to enable connection`, error);
                 return {
+                    isError: true,
                     content: [
                         {
                             type: 'text',

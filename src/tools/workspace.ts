@@ -53,6 +53,7 @@ function listWorkspaceMembers(server: McpServer): RegisteredTool {
             } catch {
                 logger.error(`Failed to fetch workspace members`);
                 return {
+                    isError: true,
                     content: [
                         {
                             type: 'text',
@@ -79,6 +80,7 @@ function inviteWorkspaceMember(server: McpServer): RegisteredTool {
             var res = validateEmail(email)
             if (res !== null) {
                 return {
+                    isError: true,
                     content: [
                         {
                             type: 'text',
@@ -107,6 +109,7 @@ function inviteWorkspaceMember(server: McpServer): RegisteredTool {
                         : 'Unknown error';
                     logger.error(`Failed to invite workspace member: ${errorMessage}. if the user already exist then check if the user has accepted the invitation.`);
                     return {
+                        isError: true,
                         content: [
                             {
                                 type: 'text',
@@ -130,6 +133,7 @@ function inviteWorkspaceMember(server: McpServer): RegisteredTool {
             } catch {
                 logger.error(`Failed to invite workspace members`);
                 return {
+                    isError: true,
                     content: [
                         {
                             type: 'text',

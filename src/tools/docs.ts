@@ -55,6 +55,7 @@ export function registerDocsTools(server: McpServer) {
       } catch (err) {
         logger.error('Failed to fetch docs for search_docs', { error: err, query });
         return {
+          isError: true,
           content: [{ type: 'text' as const, text: `Failed to retrieve documentation: ${err instanceof Error ? err.message : String(err)}` }],
         };
       }
