@@ -57,8 +57,16 @@ const allowAll = cors({
   origin: (origin, cb) => cb(null, true),
   credentials: false,
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Mcp-Protocol-Version', 'Content-Type', 'Authorization'],
-  exposedHeaders: ['WWW-Authenticate'],
+  // Mcp-Session-Id must be both readable and sendable: session attribution
+  // depends on the client reading the token off the response and replaying it,
+  // and a browser client can do neither unless it is listed here.
+  allowedHeaders: [
+    'Mcp-Protocol-Version',
+    'Mcp-Session-Id',
+    'Content-Type',
+    'Authorization',
+  ],
+  exposedHeaders: ['WWW-Authenticate', 'Mcp-Session-Id'],
   maxAge: 86400,
 });
 
