@@ -1,12 +1,19 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import express from 'express';
+import { logger } from './logger.js';
 
 export const setupTransportRoutes = (
   app: express.Express,
-  server: McpServer
+  createServer: () => McpServer
 ) => {
   app.post('/', async (req, res) => {
+    // A server and a transport per request. Reusing one server across requests
+    // means every request overwrites the shared `server.transport`, so a response
+    // can be written to a concurrent request's transport (the SDK captures the
+    // transport when it dispatches, but `connect()` and `handleRequest()` are
+    // separate awaits, and another request can connect in between).
+    const server = createServer();
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined, // stateless mode
       // Build the response headers after the handler runs instead of streaming
@@ -23,14 +30,22 @@ export const setupTransportRoutes = (
     let authInfo = { token: token };
     (req as any).auth = authInfo;
 
-    res.on('finish', () => { transport.close().catch(() => {}); });
+    res.on('close', () => {
+      transport.close().catch(() => {});
+      server.close().catch(() => {});
+    });
 
     await server.connect(transport);
 
     try {
       await transport.handleRequest(req, res, req.body);
     } catch (error) {
-      console.error('Transport error:', error);
+      logger.error('Transport error', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      if (!res.headersSent) {
+        res.status(500).end();
+      }
     }
   });
 };
