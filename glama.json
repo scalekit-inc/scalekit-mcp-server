@@ -2,7 +2,6 @@
   "$schema": "https://glama.ai/mcp/schemas/server.json",
   "maintainers": [
     "saif-at-scalekit",
-    "saif-shines",
     "AkshayParihar33"
   ]
 }
