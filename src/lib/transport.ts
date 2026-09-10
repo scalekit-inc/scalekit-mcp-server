@@ -9,6 +9,13 @@ export const setupTransportRoutes = (
   app.post('/', async (req, res) => {
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined, // stateless mode
+      // Build the response headers after the handler runs instead of streaming
+      // SSE. Analytics needs this: with SSE the headers are flushed before any
+      // handler executes, so the `Mcp-Session-Id` token minted during
+      // `initialize` never reaches the client and every request is attributed
+      // to a fresh session. With JSON responses the token goes out, clients
+      // replay it, and any instance can recover the session from the header.
+      enableJsonResponse: true,
     });
 
     const token = (req as any).token;

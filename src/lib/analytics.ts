@@ -38,7 +38,13 @@ export function instrumentServer(server: unknown): void {
   if (!posthog) return;
 
   instrument(server, posthog, {
-    enableConversationId:       true,
+    // Off deliberately. When enabled, the conversation handle takes priority over
+    // the session id for attribution, and it is minted fresh on any tool call that
+    // doesn't carry one back. Coding agents don't reliably replay it, so in practice
+    // every tool call became its own PostHog session. Session identity now comes
+    // from the `Mcp-Session-Id` token instead (see `enableJsonResponse` in
+    // lib/transport.ts), which the client replays on every request.
+    enableConversationId:       false,
     reportMissing:              true,
     enableExceptionAutocapture: true,
 
