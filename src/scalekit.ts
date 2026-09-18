@@ -1,4 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { Scalekit, TokenValidationOptions } from '@scalekit-sdk/node';
 import cors from 'cors';
 import express from 'express';
@@ -55,13 +56,29 @@ app.use('/info', express.static('public'));
 app.get(OAUTH_PROTECTED_RESOURCE_PATH, oauthProtectedResourceHandler);
 
 app.use(express.json());
-const scalekit = new Scalekit(config.skEnvUrl, config.skClientId, config.skClientSecret);
+
+let scalekitClient: Scalekit | undefined;
+function getScalekit(): Scalekit {
+  if (!scalekitClient) {
+    scalekitClient = new Scalekit(config.skEnvUrl, config.skClientId, config.skClientSecret);
+  }
+  return scalekitClient;
+}
+
+const useStdio = process.argv.includes('--stdio');
 
 (async () => {
   registerTools(server)
   logger.info('Registered tools successfully');
   registerResources(server);
   logger.info('Registered resources successfully');
+
+  if (useStdio) {
+    logger.info('Starting MCP server in stdio mode');
+    await server.connect(new StdioServerTransport());
+    return;
+  }
+
   instrumentServer(server);
 
   app.use(async (req, res, next) => {
@@ -96,7 +113,7 @@ const scalekit = new Scalekit(config.skEnvUrl, config.skClientId, config.skClien
         }
       }
 
-      await scalekit.validateToken(token, validateTokenOptions);
+      await getScalekit().validateToken(token, validateTokenOptions);
       (req as any).token = token;
       
       next();
@@ -109,7 +126,7 @@ const scalekit = new Scalekit(config.skEnvUrl, config.skClientId, config.skClien
   setupTransportRoutes(app, server);
   logger.debug('Transport routes set up completed');
 
-  app.listen(PORT, () => console.log(`MCP server running on http://localhost:${PORT}`));
+  app.listen(PORT, () => logger.info(`MCP server running on http://localhost:${PORT}`));
 
   process.on('SIGTERM', async () => {
     if (posthog) await posthog.shutdown();
