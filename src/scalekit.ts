@@ -74,6 +74,7 @@ const useStdio = process.argv.includes('--stdio');
   logger.info('Registered resources successfully');
 
   if (useStdio) {
+    // HTTP-only: SIGTERM flushes PostHog. Stdio has no instrumentation.
     logger.info('Starting MCP server in stdio mode');
     await server.connect(new StdioServerTransport());
     return;
@@ -126,10 +127,15 @@ const useStdio = process.argv.includes('--stdio');
   setupTransportRoutes(app, server);
   logger.debug('Transport routes set up completed');
 
+  getScalekit();
+
   app.listen(PORT, () => logger.info(`MCP server running on http://localhost:${PORT}`));
 
   process.on('SIGTERM', async () => {
     if (posthog) await posthog.shutdown();
     process.exit(0);
   });
-})();
+})().catch((err) => {
+  logger.error(err instanceof Error ? err.message : String(err));
+  process.exit(1);
+});
