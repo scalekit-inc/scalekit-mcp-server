@@ -49,6 +49,16 @@ This MCP server enables AI assistants to interact with Scalekit's identity and a
 
 Find your AI coding tool below and follow the steps — your client will prompt you to sign in via OAuth on first use.
 
+### Run locally over stdio
+
+Use this for MCP inspectors and Glama. Docs tools work with no login. Admin tools need an OAuth token from the user.
+
+```bash
+npm install
+npm run build
+npm run start:stdio
+```
+
 ### Claude Code
 
 ```bash

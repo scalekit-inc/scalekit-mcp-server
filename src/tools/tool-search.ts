@@ -1,11 +1,10 @@
 import { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import fetch from 'node-fetch';
 import { z } from 'zod';
-import { envHeaders, getEnvironmentDomain } from '../lib/api.js';
+import { callerToken, envHeaders, getEnvironmentDomain, oauthRequired } from '../lib/api.js';
 import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
 import {
-  AuthInfo,
   ListToolsResponse,
   ScalekitTool,
 } from '../types/index.js';
@@ -103,8 +102,8 @@ function searchToolsTool(server: McpServer): RegisteredTool {
         };
       }
 
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       try {
         const environmentDomain = await getEnvironmentDomain(

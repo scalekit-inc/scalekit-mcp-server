@@ -37,3 +37,13 @@ export function envHeaders(
 export function textContent(text: string): { content: [{ type: 'text'; text: string }] } {
   return { content: [{ type: 'text', text }] };
 }
+
+/** Caller OAuth token from the MCP request context, if any. */
+export function callerToken(context: { authInfo?: unknown }): string | undefined {
+  return (context.authInfo as { token?: string } | undefined)?.token;
+}
+
+/** Response when an admin tool is called without an OAuth token. */
+export function oauthRequired() {
+  return textContent('This tool requires OAuth. Sign in and retry.');
+}
