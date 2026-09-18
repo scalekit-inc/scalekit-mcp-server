@@ -34,8 +34,11 @@ export function envHeaders(
 }
 
 /** Builds the standard MCP text content response. */
-export function textContent(text: string): { content: [{ type: 'text'; text: string }] } {
-  return { content: [{ type: 'text', text }] };
+export function textContent(text: string, opts?: { isError?: boolean }) {
+  return {
+    content: [{ type: 'text' as const, text }],
+    ...(opts?.isError && { isError: true }),
+  };
 }
 
 /** Caller OAuth token from the MCP request context, if any. */

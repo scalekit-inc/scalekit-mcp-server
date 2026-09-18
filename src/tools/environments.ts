@@ -64,6 +64,7 @@ function listEnvironmentsTool(server: McpServer): RegisteredTool {
       } catch (err) {
         logger.error('Failed to fetch environments for list_environments', { error: err });
         return {
+          isError: true,
           content: [{ type: 'text', text: 'Failed to fetch environments. Please try again later.' }],
         };
       }
@@ -89,7 +90,7 @@ function getEnvironmentDetailsTool(server: McpServer): RegisteredTool {
         );
       } catch {
         logger.error(`Failed to fetch environment for get-environment-details: ${environmentId}`);
-        return textContent('Failed to fetch environment. Please check the if environment is correctly set or try again later.');
+        return textContent('Failed to fetch environment. Please check the if environment is correctly set or try again later.', { isError: true });
       }
     });
 }
@@ -132,6 +133,7 @@ function getEnvironmentCredentialsTool(server: McpServer): RegisteredTool {
       } catch (err) {
         logger.error('Failed to fetch credentials for get_environment_credentials', { error: err });
         return {
+          isError: true,
           content: [{ type: 'text', text: 'Failed to fetch environment credentials. Please try again later.' }],
         };
       }
@@ -209,13 +211,13 @@ function createEnvironmentRolesTool(server: McpServer): RegisteredTool {
         if (res.status > 399 && res.status < 500) {
           const errBody = await res.json().catch(() => ({}));
           logger.error('Failed to create role', { status: res.statusText, body: errBody });
-          return textContent('Failed to create role. Please check if the environment is correctly set or if this role already exist or try again later.');
+          return textContent('Failed to create role. Please check if the environment is correctly set or if this role already exist or try again later.', { isError: true });
         }
         const data = (await res.json()) as { role: Role };
         role = data.role;
       } catch (err) {
         logger.error('Failed to create environment role', { error: err });
-        return textContent('Failed to create role. Please check if the environment is correctly set or try again later.');
+        return textContent('Failed to create role. Please check if the environment is correctly set or try again later.', { isError: true });
       }
 
       return textContent(
@@ -251,13 +253,13 @@ function createEnvironmentScopeTool(server: McpServer): RegisteredTool {
         if (res.status > 399 && res.status < 500) {
           const errBody = await res.json().catch(() => ({}));
           logger.error('Failed to create scope', { status: res.statusText, body: errBody });
-          return textContent('Failed to create scope. Please check if the environment is correctly set or if this scope already exist or try again later.');
+          return textContent('Failed to create scope. Please check if the environment is correctly set or if this scope already exist or try again later.', { isError: true });
         }
         const data = (await res.json()) as { scope: Scope };
         scope = data.scope;
       } catch (err) {
         logger.error('Failed to create environment scope', { error: err });
-        return textContent('Failed to create scope. Please check if the environment is correctly set or try again later.');
+        return textContent('Failed to create scope. Please check if the environment is correctly set or try again later.', { isError: true });
       }
 
       return textContent(`Scope created successfully:\nName: ${scope.name}\nDescription: ${scope.description}`);
@@ -355,7 +357,7 @@ function listRedirectUrisTool(server: McpServer): RegisteredTool {
         };
       } catch (err) {
         logger.error('Failed to list redirect URIs', { error: err });
-        return textContent('Failed to fetch redirect URIs. Please try again later.');
+        return textContent('Failed to fetch redirect URIs. Please try again later.', { isError: true });
       }
     });
 }
@@ -391,7 +393,7 @@ function addRedirectUriTool(server: McpServer): RegisteredTool {
 
         if (!res.ok) {
           logger.error('Failed to add redirect URI', { status: res.status });
-          return textContent('Failed to add redirect URI. Please try again later.');
+          return textContent('Failed to add redirect URI. Please try again later.', { isError: true });
         }
 
         return textContent(
@@ -399,7 +401,7 @@ function addRedirectUriTool(server: McpServer): RegisteredTool {
         );
       } catch (err) {
         logger.error('Failed to add redirect URI', { error: err });
-        return textContent('Failed to add redirect URI. Please try again later.');
+        return textContent('Failed to add redirect URI. Please try again later.', { isError: true });
       }
     });
 }
@@ -435,7 +437,7 @@ function removeRedirectUriTool(server: McpServer): RegisteredTool {
 
         if (!res.ok) {
           logger.error('Failed to remove redirect URI', { status: res.status });
-          return textContent('Failed to remove redirect URI. Please try again later.');
+          return textContent('Failed to remove redirect URI. Please try again later.', { isError: true });
         }
 
         return textContent(
@@ -445,7 +447,7 @@ function removeRedirectUriTool(server: McpServer): RegisteredTool {
         );
       } catch (err) {
         logger.error('Failed to remove redirect URI', { error: err });
-        return textContent('Failed to remove redirect URI. Please try again later.');
+        return textContent('Failed to remove redirect URI. Please try again later.', { isError: true });
       }
     });
 }
@@ -473,13 +475,13 @@ function setInitiateLoginUriTool(server: McpServer): RegisteredTool {
 
         if (!res.ok) {
           logger.error('Failed to set initiate login URI', { status: res.status });
-          return textContent('Failed to set initiate login URI. Please try again later.');
+          return textContent('Failed to set initiate login URI. Please try again later.', { isError: true });
         }
 
         return textContent(`Initiate login URI set successfully: ${uri}`);
       } catch (err) {
         logger.error('Failed to set initiate login URI', { error: err });
-        return textContent('Failed to set initiate login URI. Please try again later.');
+        return textContent('Failed to set initiate login URI. Please try again later.', { isError: true });
       }
     });
 }
@@ -504,13 +506,13 @@ function removeInitiateLoginUriTool(server: McpServer): RegisteredTool {
 
         if (!res.ok) {
           logger.error('Failed to remove initiate login URI', { status: res.status });
-          return textContent('Failed to remove initiate login URI. Please try again later.');
+          return textContent('Failed to remove initiate login URI. Please try again later.', { isError: true });
         }
 
         return textContent('Initiate login URI removed successfully.');
       } catch (err) {
         logger.error('Failed to remove initiate login URI', { error: err });
-        return textContent('Failed to remove initiate login URI. Please try again later.');
+        return textContent('Failed to remove initiate login URI. Please try again later.', { isError: true });
       }
     });
 }
@@ -546,7 +548,7 @@ function addPostLogoutRedirectUriTool(server: McpServer): RegisteredTool {
 
         if (!res.ok) {
           logger.error('Failed to add post-logout redirect URI', { status: res.status });
-          return textContent('Failed to add post-logout redirect URI. Please try again later.');
+          return textContent('Failed to add post-logout redirect URI. Please try again later.', { isError: true });
         }
 
         return textContent(
@@ -554,7 +556,7 @@ function addPostLogoutRedirectUriTool(server: McpServer): RegisteredTool {
         );
       } catch (err) {
         logger.error('Failed to add post-logout redirect URI', { error: err });
-        return textContent('Failed to add post-logout redirect URI. Please try again later.');
+        return textContent('Failed to add post-logout redirect URI. Please try again later.', { isError: true });
       }
     });
 }
@@ -590,7 +592,7 @@ function removePostLogoutRedirectUriTool(server: McpServer): RegisteredTool {
 
         if (!res.ok) {
           logger.error('Failed to remove post-logout redirect URI', { status: res.status });
-          return textContent('Failed to remove post-logout redirect URI. Please try again later.');
+          return textContent('Failed to remove post-logout redirect URI. Please try again later.', { isError: true });
         }
 
         return textContent(
@@ -600,7 +602,7 @@ function removePostLogoutRedirectUriTool(server: McpServer): RegisteredTool {
         );
       } catch (err) {
         logger.error('Failed to remove post-logout redirect URI', { error: err });
-        return textContent('Failed to remove post-logout redirect URI. Please try again later.');
+        return textContent('Failed to remove post-logout redirect URI. Please try again later.', { isError: true });
       }
     });
 }
