@@ -1,9 +1,10 @@
 import { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import fetch from 'node-fetch';
 import { z } from 'zod';
+import { callerToken, oauthRequired } from '../lib/api.js';
 import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
-import { AuthInfo, CreateMemberResponse, ListMembersResponse } from '../types/index.js';
+import { CreateMemberResponse, ListMembersResponse } from '../types/index.js';
 import { validateEmail } from '../validators/types.js';
 import { TOOLS } from './index.js';
 
@@ -20,8 +21,8 @@ function listWorkspaceMembers(server: McpServer): RegisteredTool {
             pageToken: z.number().optional().default(1),
         },
         async ({ pageToken }, context) => {
-            const authInfo = context.authInfo as AuthInfo;
-            const token = authInfo?.token;
+            const token = callerToken(context);
+            if (!token) return oauthRequired();
 
             try {
                 const pageSize = 500;
@@ -73,8 +74,8 @@ function inviteWorkspaceMember(server: McpServer): RegisteredTool {
             email: z.string().min(1, 'Email is required'),
         },
         async ({ email }, context) => {
-            const authInfo = context.authInfo as AuthInfo;
-            const token = authInfo?.token;
+            const token = callerToken(context);
+            if (!token) return oauthRequired();
 
             var res = validateEmail(email)
             if (res !== null) {

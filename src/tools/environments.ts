@@ -1,10 +1,10 @@
 import { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import fetch from 'node-fetch';
 import { z } from 'zod';
-import { envHeaders, getEnvironmentDomain, textContent } from '../lib/api.js';
+import { callerToken, envHeaders, getEnvironmentDomain, oauthRequired, textContent } from '../lib/api.js';
 import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
-import { AuthInfo, Client, Environment, ListClientsResponse, ListEnvironmentsResponse, Role, Scope } from '../types/index.js';
+import { Client, Environment, ListClientsResponse, ListEnvironmentsResponse, Role, Scope } from '../types/index.js';
 import { environmentIdSchema } from '../validators/types.js';
 import { TOOLS } from './index.js';
 
@@ -34,8 +34,8 @@ function listEnvironmentsTool(server: McpServer): RegisteredTool {
       pageSize: z.number().int().min(1).max(100).optional().default(20),
     },
     async ({ pageToken, pageSize }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       try {
         const params = new URLSearchParams({ page_size: String(pageSize) });
@@ -76,8 +76,8 @@ function getEnvironmentDetailsTool(server: McpServer): RegisteredTool {
     TOOLS.get_environment_details.description,
     { environmentId: environmentIdSchema },
     async ({ environmentId }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
       try {
         const res = await fetch(`${ENDPOINTS.environments.getById(environmentId)}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -100,8 +100,8 @@ function getEnvironmentCredentialsTool(server: McpServer): RegisteredTool {
     TOOLS.get_environment_credentials.description,
     { environmentId: environmentIdSchema },
     async ({ environmentId }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       try {
         const { client, environment: env } = await getEnvClient(token, environmentId);
@@ -144,8 +144,8 @@ function listEnvironmentRolesTool(server: McpServer): RegisteredTool {
     TOOLS.list_environment_roles.description,
     { environmentId: environmentIdSchema },
     async ({ environmentId }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
       let roles: Role[];
 
       try {
@@ -190,8 +190,8 @@ function createEnvironmentRolesTool(server: McpServer): RegisteredTool {
       isDefault: z.boolean().optional().default(false),
     },
     async ({ environmentId, roleName, roleDisplayName, description, isDefault }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
       let role: Role;
 
       try {
@@ -234,8 +234,8 @@ function createEnvironmentScopeTool(server: McpServer): RegisteredTool {
       description: z.string().optional().default(''),
     },
     async ({ environmentId, scopeName, description }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
       let scope: Scope;
 
       try {
@@ -270,8 +270,8 @@ function listEnvironmentScopesTool(server: McpServer): RegisteredTool {
     TOOLS.list_environment_scopes.description,
     { environmentId: environmentIdSchema },
     async ({ environmentId }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
       let scopes: Scope[];
 
       try {
@@ -331,8 +331,8 @@ function listRedirectUrisTool(server: McpServer): RegisteredTool {
     TOOLS.list_redirect_uris.description,
     { environmentId: environmentIdSchema },
     async ({ environmentId }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       try {
         const { client } = await getEnvClient(token, environmentId);
@@ -369,8 +369,8 @@ function addRedirectUriTool(server: McpServer): RegisteredTool {
       uri: z.string().url('Must be a valid URL'),
     },
     async ({ environmentId, uri }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       try {
         const { client, domain } = await getEnvClient(token, environmentId);
@@ -413,8 +413,8 @@ function removeRedirectUriTool(server: McpServer): RegisteredTool {
       uri: z.string().url('Must be a valid URL'),
     },
     async ({ environmentId, uri }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       try {
         const { client, domain } = await getEnvClient(token, environmentId);
@@ -459,8 +459,8 @@ function setInitiateLoginUriTool(server: McpServer): RegisteredTool {
       uri: z.string().url('Must be a valid URL'),
     },
     async ({ environmentId, uri }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       try {
         const { client, domain } = await getEnvClient(token, environmentId);
@@ -490,8 +490,8 @@ function removeInitiateLoginUriTool(server: McpServer): RegisteredTool {
     TOOLS.remove_initiate_login_uri.description,
     { environmentId: environmentIdSchema },
     async ({ environmentId }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       try {
         const { client, domain } = await getEnvClient(token, environmentId);
@@ -524,8 +524,8 @@ function addPostLogoutRedirectUriTool(server: McpServer): RegisteredTool {
       uri: z.string().url('Must be a valid URL'),
     },
     async ({ environmentId, uri }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       try {
         const { client, domain } = await getEnvClient(token, environmentId);
@@ -568,8 +568,8 @@ function removePostLogoutRedirectUriTool(server: McpServer): RegisteredTool {
       uri: z.string().url('Must be a valid URL'),
     },
     async ({ environmentId, uri }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       try {
         const { client, domain } = await getEnvClient(token, environmentId);

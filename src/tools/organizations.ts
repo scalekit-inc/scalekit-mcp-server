@@ -1,10 +1,10 @@
 import { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import fetch from 'node-fetch';
 import { z } from 'zod';
-import { envHeaders, getEnvironmentDomain } from '../lib/api.js';
+import { callerToken, envHeaders, getEnvironmentDomain, oauthRequired } from '../lib/api.js';
 import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
-import { AuthInfo, GenerateAdminPortalLinkResponse, GetOrganizationResponse, ListOrganizationsResponse, ListUsersResponse } from '../types/index.js';
+import { GenerateAdminPortalLinkResponse, GetOrganizationResponse, ListOrganizationsResponse, ListUsersResponse } from '../types/index.js';
 import { environmentIdSchema, organizationIdSchema, validateEmail } from '../validators/types.js';
 import { TOOLS } from './index.js';
 
@@ -34,8 +34,8 @@ function createOrganizationTool(server: McpServer): RegisteredTool {
       organizationName: z.string().min(1, 'Organization name is required'),
     },
     async ({ environmentId, organizationName }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       try {
         const environmentDomain = await getEnvironmentDomain(token, environmentId);
@@ -85,8 +85,8 @@ function listOrganizationsTool(server: McpServer): RegisteredTool {
       pageToken: z.string().optional().default(''),
     },
     async ({ environmentId, pageToken }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       try {
         const environmentDomain = await getEnvironmentDomain(token, environmentId);
@@ -157,8 +157,8 @@ function getOrganizationDetailsTool(server: McpServer): RegisteredTool {
       organizationId: organizationIdSchema,
     },
     async ({ environmentId, organizationId }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       try {
         const environmentDomain = await getEnvironmentDomain(token, environmentId);
@@ -209,8 +209,8 @@ function generateAdminPortalLinkTool(server: McpServer): RegisteredTool {
       organizationId: organizationIdSchema,
     },
     async ({ environmentId, organizationId }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       try {
         const environmentDomain = await getEnvironmentDomain(token, environmentId);
@@ -258,8 +258,8 @@ function createOrganizationUserTool(server: McpServer): RegisteredTool {
       role: z.string().min(1, 'Role is required'),
     },
     async ({ environmentId, organizationId, email, role }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       const emailError = validateEmail(email);
       if (emailError !== null) {
@@ -324,8 +324,8 @@ function listOrganizationUsersTool(server: McpServer): RegisteredTool {
       pageToken: z.string().optional().default(''),
     },
     async ({ environmentId, organizationId, pageToken }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       try {
         const environmentDomain = await getEnvironmentDomain(token, environmentId);
@@ -405,8 +405,8 @@ function updateOrganizationSettingsTool(server: McpServer): RegisteredTool {
         .min(1, 'At least one feature must be provided'),
     },
     async ({ environmentId, organizationId, features }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       try {
         const environmentDomain = await getEnvironmentDomain(token, environmentId);

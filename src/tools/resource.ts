@@ -1,10 +1,10 @@
 import { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import fetch from 'node-fetch';
 import { z } from 'zod';
-import { envHeaders, getEnvironmentDomain } from '../lib/api.js';
+import { callerToken, envHeaders, getEnvironmentDomain, oauthRequired } from '../lib/api.js';
 import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
-import { AuthInfo, CreateResourceResponse, ListResourcesResponse, Scope } from '../types/index.js';
+import { CreateResourceResponse, ListResourcesResponse, Scope } from '../types/index.js';
 import { environmentIdSchema, resourceIdSchema, validateUrls } from '../validators/types.js';
 import { TOOLS } from './index.js';
 
@@ -24,8 +24,8 @@ function listMcpServersTool(server: McpServer): RegisteredTool {
       pageToken: z.string().optional().default(''),
     },
     async ({ environmentId, pageToken }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       try {
         const environmentDomain = await getEnvironmentDomain(token, environmentId);
@@ -98,8 +98,8 @@ function registerMcpServerTool(server: McpServer): RegisteredTool {
       useScalekitAuthentication: z.boolean(),
     },
     async ({ environmentId, name, description, mcpServerUrl, accessTokenExpiry, provider, useScalekitAuthentication }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       const urlError = validateUrls([mcpServerUrl]);
       if (urlError !== null) {
@@ -240,8 +240,8 @@ function updateMcpServerTool(server: McpServer): RegisteredTool {
           useScalekitAuthentication: z.boolean(),
         },
         async ({ environmentId, id, name, description, mcpServerUrl, accessTokenExpiry, provider, useScalekitAuthentication }, context) => {
-            const authInfo = context.authInfo as AuthInfo;
-            const token = authInfo?.token;
+            const token = callerToken(context);
+            if (!token) return oauthRequired();
 
             if (mcpServerUrl) {
               const urlError = validateUrls([mcpServerUrl]);
@@ -330,8 +330,8 @@ function switchMcpAuthToScalekitTool(server: McpServer): RegisteredTool {
           id: resourceIdSchema,
         },
         async ({ environmentId, id }, context) => {
-            const authInfo = context.authInfo as AuthInfo;
-            const token = authInfo?.token;
+            const token = callerToken(context);
+            if (!token) return oauthRequired();
 
             try {
                 const environmentDomain = await getEnvironmentDomain(token, environmentId);

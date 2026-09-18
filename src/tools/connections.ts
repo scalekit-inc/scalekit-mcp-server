@@ -1,12 +1,11 @@
 import { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import fetch from 'node-fetch';
 import { z } from 'zod';
-import { envHeaders, getEnvironmentDomain } from '../lib/api.js';
+import { callerToken, envHeaders, getEnvironmentDomain, oauthRequired } from '../lib/api.js';
 import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
 import {
   AppConnection,
-  AuthInfo,
   ConnectedAccount,
   Connection,
   CreateConnectedAccountMagicLinkResponse,
@@ -101,8 +100,8 @@ function getEnvironmentConnectionsTool(server: McpServer): RegisteredTool {
     TOOLS.list_environment_connections.description,
     { environmentId: environmentIdSchema },
     async ({ environmentId }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       try {
         const environmentDomain = await getEnvironmentDomain(token, environmentId);
@@ -152,8 +151,8 @@ function listConnectedAccountsTool(server: McpServer): RegisteredTool {
       pageToken: z.string().optional().describe('Opaque token from a previous response to fetch the next page.'),
     },
     async ({ environmentId, connector, connectionId, summary, pageSize, pageToken }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       try {
         const environmentDomain = await getEnvironmentDomain(token, environmentId);
@@ -295,8 +294,8 @@ function searchConnectorsTool(server: McpServer): RegisteredTool {
       includeSetupStatus: z.boolean().optional().default(false).describe('When true, also checks which connectors have been set up (have active connections) in the environment.'),
     },
     async ({ environmentId, query, connectorType, pageSize, pageToken, includeSetupStatus }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       if (!query && (!connectorType || connectorType === 'ALL')) {
         return {
@@ -411,8 +410,8 @@ function createConnectedAccountMagicLinkTool(server: McpServer): RegisteredTool 
       connector: z.string().min(1, 'connector is required'),
     },
     async ({ environmentId, identifier, connector }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       try {
         const environmentDomain = await getEnvironmentDomain(token, environmentId);
@@ -461,8 +460,8 @@ function getOrganizationConnectionsTool(server: McpServer): RegisteredTool {
       organizationId: organizationIdSchema,
     },
     async ({ environmentId, organizationId }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       try {
         const environmentDomain = await getEnvironmentDomain(token, environmentId);
@@ -496,8 +495,8 @@ function enableConnectionTool(server: McpServer): RegisteredTool {
       connection_id: connectionIdSchema,
     },
     async ({ environmentId, connection_id }, context) => {
-      const authInfo = context.authInfo as AuthInfo;
-      const token = authInfo?.token;
+      const token = callerToken(context);
+      if (!token) return oauthRequired();
 
       try {
         const environmentDomain = await getEnvironmentDomain(token, environmentId);
