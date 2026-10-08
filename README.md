@@ -33,7 +33,7 @@
 
 ## Overview
 
-This MCP server enables AI assistants to interact with Scalekit's identity and access management platform through a standardized set of tools. It provides secure, OAuth-protected access to manage environments, organizations, users, authentication connections, and more.
+Use this MCP server as the Scalekit admin console to set up 500+ connectors and 20,000+ tools for all your agent integrations.
 
 ## Features
 
