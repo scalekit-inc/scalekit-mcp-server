@@ -81,12 +81,13 @@ function searchToolsTool(server: McpServer): RegisteredTool {
         .describe(
           'When true (default), returns tools grouped by connector with name and description. Set to false for full tool definitions including input schemas.'
         ),
-      pageSize: z.number().int().min(1).max(30).optional().default(20),
+      pageSize: z.number().int().min(1).max(30).optional().default(20).describe('Maximum tools to return. Default 20. Maximum 30.'),
       pageToken: z
         .string()
         .optional()
         .describe('Opaque token from a previous response to fetch the next page.'),
     },
+    TOOLS.search_tools.annotations,
     async (
       { environmentId, connector, identifier, query, summary, pageSize, pageToken },
       context

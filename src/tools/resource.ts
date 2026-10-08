@@ -21,8 +21,9 @@ function listMcpServersTool(server: McpServer): RegisteredTool {
     TOOLS.list_mcp_servers.description,
     {
       environmentId: environmentIdSchema,
-      pageToken: z.string().optional().default(''),
+      pageToken: z.string().optional().default('').describe('Page token from a previous list response. Omit it to read the first page.'),
     },
+    TOOLS.list_mcp_servers.annotations,
     async ({ environmentId, pageToken }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -91,13 +92,14 @@ function registerMcpServerTool(server: McpServer): RegisteredTool {
     TOOLS.register_mcp_server.description,
     {
       environmentId: environmentIdSchema,
-      name: z.string().min(1, 'Name is required'),
-      description: z.string().optional().default(''),
-      mcpServerUrl: z.string().min(1, 'MCP Server URL is required'),
-      accessTokenExpiry: z.number().int().min(1, 'Access token expiry must be a positive integer'),
-      provider: z.string().optional().default(''),
-      useScalekitAuthentication: z.boolean(),
+      name: z.string().min(1, 'Name is required').describe('Display name of the MCP server.'),
+      description: z.string().optional().default('').describe('Short explanation of what this MCP server does. Empty when omitted.'),
+      mcpServerUrl: z.string().min(1, 'MCP Server URL is required').describe('Public URL of the MCP server. This URL becomes the token audience.'),
+      accessTokenExpiry: z.number().int().min(1, 'Access token expiry must be a positive integer').describe('Access token lifetime in seconds.'),
+      provider: z.string().optional().default('').describe('Connection key id for a customer-owned provider. Leave empty when useScalekitAuthentication is true.'),
+      useScalekitAuthentication: z.boolean().describe('True uses Scalekit authentication. False requires a provider key id.'),
     },
+    TOOLS.register_mcp_server.annotations,
     async ({ environmentId, name, description, mcpServerUrl, accessTokenExpiry, provider, useScalekitAuthentication }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -238,13 +240,14 @@ function updateMcpServerTool(server: McpServer): RegisteredTool {
         {
           environmentId: environmentIdSchema,
           id: resourceIdSchema,
-          name: z.string().optional(),
-          description: z.string().optional(),
-          mcpServerUrl: z.string().optional(),
-          accessTokenExpiry: z.number().int().min(1, 'Access token expiry must be a positive integer').optional(),
-          provider: z.string().optional().default(''),
-          useScalekitAuthentication: z.boolean(),
+          name: z.string().optional().describe('New display name. Omit it to leave the name unchanged.'),
+          description: z.string().optional().describe('New explanation of the server. Omit it to leave the description unchanged.'),
+          mcpServerUrl: z.string().optional().describe('New public URL. This URL becomes the token audience. Omit it to leave the URL unchanged.'),
+          accessTokenExpiry: z.number().int().min(1, 'Access token expiry must be a positive integer').optional().describe('New access token lifetime in seconds. Omit it to leave the lifetime unchanged.'),
+          provider: z.string().optional().default('').describe('Connection key id, in capital letters, when not using Scalekit authentication. Leave empty when useScalekitAuthentication is true.'),
+          useScalekitAuthentication: z.boolean().describe('True moves the server onto Scalekit authentication and clears the provider.'),
         },
+        TOOLS.update_mcp_server.annotations,
         async ({ environmentId, id, name, description, mcpServerUrl, accessTokenExpiry, provider, useScalekitAuthentication }, context) => {
             const token = callerToken(context);
             if (!token) return oauthRequired();
@@ -338,6 +341,7 @@ function switchMcpAuthToScalekitTool(server: McpServer): RegisteredTool {
           environmentId: environmentIdSchema,
           id: resourceIdSchema,
         },
+        TOOLS.switch_mcp_auth_to_scalekit.annotations,
         async ({ environmentId, id }, context) => {
             const token = callerToken(context);
             if (!token) return oauthRequired();

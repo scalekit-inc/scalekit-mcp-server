@@ -3,22 +3,26 @@ import { z } from 'zod';
 /** Reusable schema for environment ID (env_...) - use in tool input schemas. */
 export const environmentIdSchema = z
   .string()
-  .regex(/^env_\w+$/, 'Environment ID must start with env_');
+  .regex(/^env_\w+$/, 'Environment ID must start with env_')
+  .describe('Scalekit environment id. Format: env_<id>.');
 
 /** Reusable schema for organization ID (org_...) - use in tool input schemas. */
 export const organizationIdSchema = z
   .string()
-  .regex(/^org_\w+$/, 'Organization ID must start with org_');
+  .regex(/^org_\w+$/, 'Organization ID must start with org_')
+  .describe('Scalekit organization id. Format: org_<id>.');
 
 /** Reusable schema for connection ID (conn_...) */
 export const connectionIdSchema = z
   .string()
-  .regex(/^conn_\w+$/, 'Connection ID must start with conn_');
+  .regex(/^conn_\w+$/, 'Connection ID must start with conn_')
+  .describe('Scalekit connection id. Format: conn_<id>.');
 
 /** Reusable schema for resource ID (app_...) */
 export const resourceIdSchema = z
   .string()
-  .regex(/^app_\w+$/, 'Resource ID must start with app_');
+  .regex(/^app_\w+$/, 'Resource ID must start with app_')
+  .describe('Registered MCP server id. Format: app_<id>.');
 
 /** OIDC provider enum - use in connection tools. */
 export const OIDC_PROVIDERS = [

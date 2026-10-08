@@ -99,6 +99,7 @@ function getEnvironmentConnectionsTool(server: McpServer): RegisteredTool {
     TOOLS.list_environment_connections.name,
     TOOLS.list_environment_connections.description,
     { environmentId: environmentIdSchema },
+    TOOLS.list_environment_connections.annotations,
     async ({ environmentId }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -148,9 +149,10 @@ function listConnectedAccountsTool(server: McpServer): RegisteredTool {
         .describe(
           'When true (default), returns accounts grouped by connector with key details. Set to false for full account details.'
         ),
-      pageSize: z.number().int().min(1).max(100).optional().default(20),
+      pageSize: z.number().int().min(1).max(100).optional().default(20).describe('Maximum connected accounts to return. Default 20. Maximum 100.'),
       pageToken: z.string().optional().describe('Opaque token from a previous response to fetch the next page.'),
     },
+    TOOLS.list_connected_accounts.annotations,
     async ({ environmentId, connector, connectionId, summary, pageSize, pageToken }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -291,10 +293,11 @@ function searchConnectorsTool(server: McpServer): RegisteredTool {
       environmentId: environmentIdSchema,
       query: z.string().min(1).optional().describe('Search keyword to match against connector name, identifier, description, or categories (e.g. "gmail", "slack", "hubspot").'),
       connectorType: z.enum(['SCALEKIT', 'CUSTOM', 'ALL']).optional().default('ALL').describe('Filter by connector type: SCALEKIT (pre-built connectors provided and maintained by Scalekit, shared across all environments), CUSTOM (connectors created by environment users, scoped to a single environment and not shared between environments), or ALL (both types).'),
-      pageSize: z.number().int().min(1).max(1000).optional().default(20),
+      pageSize: z.number().int().min(1).max(1000).optional().default(20).describe('Maximum connectors to return. Default 20. Maximum 1000.'),
       pageToken: z.string().optional().describe('Opaque token from a previous response to fetch the next page.'),
       includeSetupStatus: z.boolean().optional().default(false).describe('When true, also checks which connectors have been set up (have active connections) in the environment.'),
     },
+    TOOLS.search_connectors.annotations,
     async ({ environmentId, query, connectorType, pageSize, pageToken, includeSetupStatus }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -408,9 +411,10 @@ function createConnectedAccountMagicLinkTool(server: McpServer): RegisteredTool 
     TOOLS.create_connected_account_magic_link.description,
     {
       environmentId: environmentIdSchema,
-      identifier: z.string().min(1, 'identifier is required'),
-      connector: z.string().min(1, 'connector is required'),
+      identifier: z.string().min(1, 'identifier is required').describe('Friendly name for the account being connected.'),
+      connector: z.string().min(1, 'connector is required').describe('Connector identifier, for example notion or gmail. Use a value from search_connectors.'),
     },
+    TOOLS.create_connected_account_magic_link.annotations,
     async ({ environmentId, identifier, connector }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -462,6 +466,7 @@ function getOrganizationConnectionsTool(server: McpServer): RegisteredTool {
       environmentId: environmentIdSchema,
       organizationId: organizationIdSchema,
     },
+    TOOLS.list_organization_connections.annotations,
     async ({ environmentId, organizationId }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -498,6 +503,7 @@ function enableConnectionTool(server: McpServer): RegisteredTool {
       environmentId: environmentIdSchema,
       connection_id: connectionIdSchema,
     },
+    TOOLS.enable_environment_connection.annotations,
     async ({ environmentId, connection_id }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();

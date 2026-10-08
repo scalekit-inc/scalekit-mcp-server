@@ -31,8 +31,9 @@ function createOrganizationTool(server: McpServer): RegisteredTool {
     TOOLS.create_organization.description,
     {
       environmentId: environmentIdSchema,
-      organizationName: z.string().min(1, 'Organization name is required'),
+      organizationName: z.string().min(1, 'Organization name is required').describe('Display name of the new organization.'),
     },
+    TOOLS.create_organization.annotations,
     async ({ environmentId, organizationName }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -83,8 +84,9 @@ function listOrganizationsTool(server: McpServer): RegisteredTool {
     TOOLS.list_organizations.description,
     {
       environmentId: environmentIdSchema,
-      pageToken: z.string().optional().default(''),
+      pageToken: z.string().optional().default('').describe('Page token from a previous list response. Omit it to read the first page.'),
     },
+    TOOLS.list_organizations.annotations,
     async ({ environmentId, pageToken }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -158,6 +160,7 @@ function getOrganizationDetailsTool(server: McpServer): RegisteredTool {
       environmentId: environmentIdSchema,
       organizationId: organizationIdSchema,
     },
+    TOOLS.get_organization_details.annotations,
     async ({ environmentId, organizationId }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -211,6 +214,7 @@ function generateAdminPortalLinkTool(server: McpServer): RegisteredTool {
       environmentId: environmentIdSchema,
       organizationId: organizationIdSchema,
     },
+    TOOLS.generate_admin_portal_link.annotations,
     async ({ environmentId, organizationId }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -258,9 +262,10 @@ function createOrganizationUserTool(server: McpServer): RegisteredTool {
     {
       environmentId: environmentIdSchema,
       organizationId: organizationIdSchema,
-      email: z.string().min(1, 'Email is required'),
-      role: z.string().min(1, 'Role is required'),
+      email: z.string().min(1, 'Email is required').describe('Email address of the user to create.'),
+      role: z.string().min(1, 'Role is required').describe('Role name to assign. Use a name returned by list_environment_roles.'),
     },
+    TOOLS.create_organization_user.annotations,
     async ({ environmentId, organizationId, email, role }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -327,8 +332,9 @@ function listOrganizationUsersTool(server: McpServer): RegisteredTool {
     {
       environmentId: environmentIdSchema,
       organizationId: organizationIdSchema,
-      pageToken: z.string().optional().default(''),
+      pageToken: z.string().optional().default('').describe('Page token from a previous list response. Omit it to read the first page.'),
     },
+    TOOLS.list_organization_users.annotations,
     async ({ environmentId, organizationId, pageToken }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -405,12 +411,14 @@ function updateOrganizationSettingsTool(server: McpServer): RegisteredTool {
       features: z
         .array(
           z.object({
-            name: z.string().min(1, 'Feature name is required'),
-            enabled: z.boolean(),
+            name: z.string().min(1, 'Feature name is required').describe('Feature key, for example dir_sync.'),
+            enabled: z.boolean().describe('True turns the feature on. False turns it off.'),
           })
         )
-        .min(1, 'At least one feature must be provided'),
+        .min(1, 'At least one feature must be provided')
+        .describe('Organization features to set. At least one entry is required.'),
     },
+    TOOLS.update_organization_settings.annotations,
     async ({ environmentId, organizationId, features }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
