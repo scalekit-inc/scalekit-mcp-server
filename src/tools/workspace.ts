@@ -18,8 +18,9 @@ function listWorkspaceMembers(server: McpServer): RegisteredTool {
         TOOLS.list_workspace_members.name,
         TOOLS.list_workspace_members.description,
         {
-            pageToken: z.number().optional().default(1),
+            pageToken: z.number().optional().default(1).describe('1-based page number. Default 1.'),
         },
+        TOOLS.list_workspace_members.annotations,
         async ({ pageToken }, context) => {
             const token = callerToken(context);
             if (!token) return oauthRequired();
@@ -72,8 +73,9 @@ function inviteWorkspaceMember(server: McpServer): RegisteredTool {
         TOOLS.invite_workspace_member.name,
         TOOLS.invite_workspace_member.description,
         {
-            email: z.string().min(1, 'Email is required'),
+            email: z.string().min(1, 'Email is required').describe('Email address to invite into the workspace.'),
         },
+        TOOLS.invite_workspace_member.annotations,
         async ({ email }, context) => {
             const token = callerToken(context);
             if (!token) return oauthRequired();

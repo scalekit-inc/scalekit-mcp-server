@@ -1,4 +1,5 @@
 import { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import { SCOPES } from '../types/scopes.js';
 import { registerConnectionTools } from './connections.js';
 import { registerDocsTools } from './docs.js';
@@ -8,185 +9,248 @@ import { registerResourceTools } from './resource.js';
 import { registerToolSearchTools } from './tool-search.js';
 import { registerWorkspaceTools } from './workspace.js';
 
+const readTool: ToolAnnotations = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+};
+
+const readOpenTool: ToolAnnotations = {
+  ...readTool,
+  openWorldHint: true,
+};
+
+const createTool: ToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: false,
+  openWorldHint: false,
+};
+
+const writeTool: ToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+};
+
+const removeTool: ToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  idempotentHint: true,
+  openWorldHint: false,
+};
+
 const toolsList = {
   list_environments: {
     name: 'list_environments',
-    description: 'List all available environments in the workspace. Supports pagination via pageToken (a 1-based page number e.g. 1, 2, 3). Returns environment id, display name, type (PRD/DEV), domain, custom domain and status. Show the response in tabular structured manner. After fetching each page, ask if it should pull the next page.',
+    description: 'List environments in the current workspace, one page at a time. Use this to discover environment ids. Use get_environment_details when you already have an id. Requires the caller OAuth token.',
+    annotations: readTool,
     scopes: [SCOPES.environmentRead],
   },
   get_environment_details: {
     name: 'get_environment_details',
-    description: 'Get the environment details by ID (e.g. env_123). After providing details of environment details, the client can prompt to invoke list-organizations tool to list all organizations under the selected environment.',
+    description: 'Read one environment by id, including its type and domain. Use list_environments when you need to discover an id. This tool does not list organizations. Use list_organizations for that. Requires the caller OAuth token.',
+    annotations: readTool,
     scopes: [SCOPES.environmentRead],
   },
   list_environment_roles: {
     name: 'list_environment_roles',
-    description: 'List all roles in the specified environment. Requires environmentId parameter (format: env_<number>). Show the response in tabular structured manner.',
+    description: 'List roles defined in one environment. Use create_environment_role to add a role. This tool does not list permission scopes. Use list_environment_scopes for those. Requires the caller OAuth token.',
+    annotations: readTool,
     scopes: [SCOPES.environmentRead],
   },
   create_environment_role: {
     name: 'create_environment_role',
-    description: 'Create a new role in the specified environment. Requires environmentId parameter (format: env_<number>). The tool requires 4 parameters: roleName (name of the new role), displayName (name that will be displayed on dashboard), description (description of the role) and isDefault (boolean to indicate if the role is default or not).',
+    description: 'Create one role in an environment. Use list_environment_roles to see roles that already exist. This tool does not create a permission scope. Use create_environment_scope for that. Requires the caller OAuth token. A duplicate role name is rejected.',
+    annotations: createTool,
     scopes: [SCOPES.environmentWrite],
   },
   list_environment_scopes: {
     name: 'list_environment_scopes',
-    description: 'List all scopes in the specified environment. Requires environmentId parameter (format: env_<number>). Show the response in tabular structured manner.',
+    description: 'List permission scopes defined in one environment. Use create_environment_scope to add a scope. This tool does not list roles. Use list_environment_roles for those. Requires the caller OAuth token.',
+    annotations: readTool,
     scopes: [SCOPES.environmentRead],
   },
   create_environment_scope: {
     name: 'create_environment_scope',
-    description: 'Create a new scope in the specified environment. Requires environmentId parameter (format: env_<number>). The tool requires 2 parameters: scopeName (name of the new scope) and description (description of the scope).',
+    description: 'Create one permission scope in an environment. Use list_environment_scopes to see scopes that already exist. This tool does not create a role. Use create_environment_role for that. Requires the caller OAuth token. A duplicate scope name is rejected.',
+    annotations: createTool,
     scopes: [SCOPES.environmentWrite],
   },
   list_workspace_members: {
     name: 'list_workspace_members',
-    description: 'List all members in the current workspace. The tool requires 1 parameters: pageToken (1-based index). Show the response in tabular structured manner. After fetching each page, client should ask if it should pull next page or not.',
+    description: 'List members of the current workspace, one page at a time. Use invite_workspace_member to add a member. This tool does not list users inside an organization. Use list_organization_users for those. Requires the caller OAuth token.',
+    annotations: readTool,
     scopes: [SCOPES.workspaceRead],
   },
   invite_workspace_member: {
     name: 'invite_workspace_member',
-    description: 'Invite a new member in the current workspace. The tool requires 1 parameter: email (email of the new member).',
+    description: 'Invite one person to the current workspace by email. Use list_workspace_members to see who is already a member. This tool does not add a user to an organization. Use create_organization_user for that. Requires the caller OAuth token. Each call can send a new invite.',
+    annotations: createTool,
     scopes: [SCOPES.workspaceWrite],
   },
   list_organizations: {
     name: 'list_organizations',
-    description: 'List all organizations under the specified environment. Requires environmentId parameter (format: env_<number>). The tool requires 1 parameter: pageToken (received from response). Show the response in tabular structured manner. After fetching each page, client should ask if it should pull next page or not.',
+    description: 'List organizations in one environment, one page at a time. Use get_organization_details when you already have an organization id. Use create_organization to add one. Requires the caller OAuth token.',
+    annotations: readTool,
     scopes: [SCOPES.organizationRead],
   },
   get_organization_details: {
     name: 'get_organization_details',
-    description: 'Get the details of an organization by ID (e.g. org_123). Requires environmentId parameter (format: env_<number>). After providing details of organization details, the client can prompt to invoke list-members tool to list all members under the selected organization.',
+    description: 'Read one organization by id. Use list_organizations when you need to discover an id. This tool does not list the organization users. Use list_organization_users for those. Requires the caller OAuth token.',
+    annotations: readTool,
     scopes: [SCOPES.organizationRead],
   },
   create_organization: {
     name: 'create_organization',
-    description: 'Create a new organization under the specified environment. Requires environmentId parameter (format: env_<number>).',
+    description: 'Create one organization in an environment. Use list_organizations to see organizations that already exist. This tool does not create users inside the organization. Use create_organization_user after the organization exists. Requires the caller OAuth token.',
+    annotations: createTool,
     scopes: [SCOPES.organizationWrite],
   },
   generate_admin_portal_link: {
     name: 'generate_admin_portal_link',
-    description: 'Generate a link to the admin portal for the selected organization. Requires environmentId parameter (format: env_<number>). The tool requires organization id to be passed (e.g. org_123). This link is also called admin portal magic link.',
+    description: 'Create a one-time admin portal link for one organization. Use get_organization_details to read the organization. This tool does not change organization settings. Use update_organization_settings for that. Requires the caller OAuth token. Each call returns a new link.',
+    annotations: createTool,
     scopes: [SCOPES.organizationWrite],
   },
   get_environment_credentials: {
     name: 'get_environment_credentials',
-    description: 'Get API credentials for a Scalekit environment. Returns SCALEKIT_ENVIRONMENT_URL, SCALEKIT_CLIENT_ID, and active secret info formatted as a .env block. The client secret is not available via API — the tool will tell the user where to find it in the dashboard.',
+    description: 'Read the API client id, environment URL, and secret suffix for one environment, as a .env block. Use get_environment_details for the environment name and domain, not the client id. Requires the caller OAuth token. The client secret value is not returned. The dashboard shows that secret.',
+    annotations: readTool,
     scopes: [SCOPES.environmentRead],
   },
   list_environment_connections: {
     name: 'list_environment_connections',
-    description: 'List all connection for the specified environment. Requires environmentId parameter (format: env_<number>).',
+    description: 'List SSO connections configured on one environment. Use list_organization_connections for connections on one organization. Use list_connected_accounts for OAuth connector accounts. Those are a different record. Requires the caller OAuth token.',
+    annotations: readTool,
     scopes: [SCOPES.environmentRead],
   },
   list_connected_accounts: {
     name: 'list_connected_accounts',
-    description:
-      'List users (connected accounts) who have authorized with connectors in the given environment. Filter by connector type (e.g. "HUBSPOT") or specific connection ID. Returns accounts grouped by connector showing identifier, status, and auth details.',
+    description: 'List connected accounts, the users who authorized a connector in one environment. Use search_connectors to find a connector in the catalog. Use list_environment_connections for SSO connections, not connector accounts. Requires the caller OAuth token.',
+    annotations: readTool,
     scopes: [SCOPES.environmentRead],
   },
   create_connected_account_magic_link: {
     name: 'create_connected_account_magic_link',
-    description:
-      'Create a magic link to connect an OAuth connector account (e.g. Notion, Gmail) at the environment level. Requires environmentId (format: env_<number>), identifier (a friendly name), and connector (e.g. "notion"). Returns link and expiry.',
+    description: 'Create a link that lets someone connect an OAuth connector account, such as Notion or Gmail, in one environment. Use list_connected_accounts to see accounts that are already connected. This tool does not search the catalog. Use search_connectors for that. Requires the caller OAuth token. Each call returns a new link and an expiry.',
+    annotations: createTool,
     scopes: [SCOPES.environmentWrite],
   },
   list_organization_connections: {
     name: 'list_organization_connections',
-    description: 'List all connection for the selected organization. Requires environmentId parameter (format: env_<number>). The tool also requires organization id to be passed (e.g. org_123) ',
+    description: 'List SSO connections for one organization. Use list_environment_connections for connections on the environment as a whole. Use enable_environment_connection to enable an environment connection, not an organization connection. Requires the caller OAuth token.',
+    annotations: readTool,
     scopes: [SCOPES.organizationRead],
   },
   enable_environment_connection: {
     name: 'enable_environment_connection',
-    description: `Enable an existing connection for the specified environment. Requires environmentId parameter (format: env_<number>). This tool requires the following parameters:
-- connectionId: (ID of the connection to enable, e.g. conn_123)`,
+    description: 'Enable one existing environment connection. Use list_environment_connections to find the connection id. This tool does not create a connection, and it does not enable an organization connection. Requires the caller OAuth token. Enabling an already enabled connection leaves it enabled.',
+    annotations: writeTool,
     scopes: [SCOPES.environmentWrite],
   },
   create_organization_user: {
     name: 'create_organization_user',
-    description: 'Create a new user in the selected organization. Requires environmentId parameter (format: env_<number>). It needs the following parameters: organizationId, email, role (role name). The role can be fetched by using list_environment_roles tool.',
+    description: 'Create one user in an organization and assign a role. Use list_organization_users to see users that already exist. Role names come from list_environment_roles. Requires the caller OAuth token.',
+    annotations: createTool,
     scopes: [SCOPES.organizationWrite],
   },
   list_organization_users: {
     name: 'list_organization_users',
-    description: 'List all users in the selected organization. Requires environmentId parameter (format: env_<number>). It needs the following parameters: organizationId, pageToken. Show the response in tabular structured manner. After fetching each page, client should ask if it should pull next page or not.',
+    description: 'List users in one organization, one page at a time. Use get_organization_details to read the organization record. Use create_organization_user to add a user. Requires the caller OAuth token.',
+    annotations: readTool,
     scopes: [SCOPES.organizationRead],
   },
   update_organization_settings: {
     name: 'update_organization_settings',
-    description: 'Update the settings of an organization. Requires environmentId parameter (format: env_<number>). It needs the following parameters: organizationId, feature (valid json key-value pair array) {[{\"name\":\"dir_sync\",\"enabled\":true}]}.',
+    description: 'Turn organization features on or off, such as directory sync. Use get_organization_details to read the organization. This tool does not rename the organization and does not add users. Requires the caller OAuth token. Sending the same feature values again leaves them unchanged.',
+    annotations: writeTool,
     scopes: [SCOPES.organizationWrite],
   },
   list_mcp_servers: {
     name: 'list_mcp_servers',
-    description: 'List all MCP servers in the specified environment. Requires environmentId parameter (format: env_<number>). It needs pageToken parameter for showing further pages. Show the response in tabular structured manner. Always ask the client if it should pull next page or not.',
+    description: 'List MCP servers registered in one environment, one page at a time. Use register_mcp_server to add a server. Use update_mcp_server to change one. Requires the caller OAuth token.',
+    annotations: readTool,
     scopes: [SCOPES.environmentRead],
   },
   register_mcp_server: {
     name: 'register_mcp_server',
-    description: 'Register a new MCP server in the specified environment. Requires environmentId parameter (format: env_<number>). It needs the following parameters: name, description, url, access_token_expiry (in seconds), provider (the unique key_id which the customer has setup for connection - this is needed only when use_scalekit_authentication is chosen to be false), use_scalekit_authentication (this is a flag to indicate if the mcp server will be using scalekit authentication solution). The url that you provide will be made available in audience of token. The tool returns resource metadata of the registered MCP server. Show in a structured JSON format for resource metadata and prompt the user to make sure this resource metadata json is published on their mcp server with endpoint /.well-known/oauth-protected-resource.',
+    description: 'Register one MCP server in an environment and return its protected-resource metadata. Use list_mcp_servers to see servers that already exist. Use update_mcp_server to change a server after it exists. Requires the caller OAuth token. Publish that metadata at /.well-known/oauth-protected-resource on the server. The URL you pass becomes the token audience.',
+    annotations: createTool,
     scopes: [SCOPES.environmentWrite],
   },
   update_mcp_server: {
     name: 'update_mcp_server',
-    description: 'Update an existing MCP server in the specified environment. Requires environmentId parameter (format: env_<number>). It needs the following parameters: id (id of the MCP server), name (optional), description (optional), url(optional), access_token_expiry (optional) (in seconds), provider (the unique key_id which the customer has setup for connection and should be in capital letters - this is needed only when use_scalekit_authentication is chosen to be false), use_scalekit_authentication (this is a flag to indicate if the mcp server will be using scalekit authentication solution). The url that you provide will be made available in audience of token.',
+    description: 'Update fields on one registered MCP server, such as its name or URL. Use switch_mcp_auth_to_scalekit when the only change is to move that server onto Scalekit authentication. Use list_mcp_servers to find the id. Requires the caller OAuth token. Sending the same values again leaves the server unchanged.',
+    annotations: writeTool,
     scopes: [SCOPES.environmentWrite],
   },
   switch_mcp_auth_to_scalekit: {
     name: 'switch_mcp_auth_to_scalekit',
-    description: 'Switch the authentication of an existing MCP server to Scalekit authentication. Requires environmentId parameter (format: env_<number>). It needs the following parameters: id (id of the MCP server). The tool will update the MCP server to use Scalekit authentication solution.',
+    description: 'Move one registered MCP server onto Scalekit authentication. Use update_mcp_server to change the name, URL, or other fields. This tool does not edit those fields. Requires the caller OAuth token. Switching a server that already uses Scalekit authentication leaves it there.',
+    annotations: writeTool,
     scopes: [SCOPES.environmentWrite],
   },
   search_connectors: {
     name: 'search_connectors',
-    description:
-      'Search the connector catalog (e.g. Google, Notion, Slack) for the given environment. Returns matching connectors with their identifier, category, and type. When includeSetupStatus is true, each result is annotated with whether the connector has been set up in the environment.',
+    description: 'Search the connector catalog in one environment, for example Google, Notion, or Slack. Use search_tools to search actions on a connector. This tool does not list connected accounts. Use list_connected_accounts for those. Requires the caller OAuth token.',
+    annotations: readTool,
     scopes: [SCOPES.environmentRead],
   },
   search_tools: {
     name: 'search_tools',
-    description:
-      'Search available tools (actions) exposed by connectors in the given environment. Filter by connector name (e.g. "HUBSPOT") or search by action (e.g. "search contacts"). Returns tools grouped by connector. Set summary=false for full tool definitions including input schemas. Output schemas are not available — refer to the connector\'s official API documentation for response structures.',
+    description: 'Search actions exposed by connectors in one environment. Use search_connectors to find the connector itself. This tool does not call the action. Output schemas are not returned. Read the connector API docs for the response shape. Requires the caller OAuth token.',
+    annotations: readTool,
     scopes: [SCOPES.environmentRead],
   },
   search_docs: {
     name: 'search_docs',
-    description: 'Search Scalekit documentation by keyword. Prefer reading docs:// resources directly — use this tool only when no specific docs:// resource clearly covers the topic.',
+    description: 'Search public Scalekit documentation by keyword. Read a docs:// resource when one resource already covers the topic. Use this tool only when no docs:// resource matches. This tool does not require a Scalekit OAuth token. It does not change any Scalekit record.',
+    annotations: readOpenTool,
     scopes: [],
   },
   list_redirect_uris: {
     name: 'list_redirect_uris',
-    description: 'List allowed callback URLs (redirect URIs) for the specified environment. Requires environmentId (format: env_<number>). Show the response in a structured list.',
+    description: 'Read the login redirect URIs, the initiate-login URI, and the post-logout redirect URIs for one environment. Use add_redirect_uri, set_initiate_login_uri, or add_post_logout_redirect_uri to change one of those values. Requires the caller OAuth token.',
+    annotations: readTool,
     scopes: [SCOPES.environmentRead],
   },
   add_redirect_uri: {
     name: 'add_redirect_uri',
-    description: 'Add a callback URL to the allowed redirect URIs list for an environment. Requires environmentId (format: env_<number>) and uri (the callback URL to add).',
+    description: 'Add one login callback URL to an environment. Use add_post_logout_redirect_uri for a URL used after logout. Use list_redirect_uris to read the current list. Requires the caller OAuth token. Adding a URL that is already on the list leaves the list unchanged.',
+    annotations: writeTool,
     scopes: [SCOPES.environmentWrite],
   },
   remove_redirect_uri: {
     name: 'remove_redirect_uri',
-    description: 'Remove a callback URL from the allowed redirect URIs list for an environment. Requires environmentId (format: env_<number>) and uri (the callback URL to remove).',
+    description: 'Remove one login callback URL from an environment. Use remove_post_logout_redirect_uri to remove a post-logout URL. Use list_redirect_uris to read the current list. Requires the caller OAuth token. This deletes that URL from the allowed list.',
+    annotations: removeTool,
     scopes: [SCOPES.environmentWrite],
   },
   set_initiate_login_uri: {
     name: 'set_initiate_login_uri',
-    description: 'Set the initiate login URI for an environment. This is the endpoint in your app that redirects to Scalekit\'s /authorize endpoint — required to handle login scenarios not initiated from your app (IdP-initiated SSO). Requires environmentId (format: env_<number>) and uri (the full URL of your login initiation endpoint).',
+    description: 'Set the initiate-login URI for an environment. That URI is the app endpoint that redirects to the Scalekit authorize endpoint for logins that did not start in the app, including IdP-initiated SSO. Use remove_initiate_login_uri to clear it. Use list_redirect_uris to read it. Requires the caller OAuth token. Setting the same URI again leaves it unchanged.',
+    annotations: writeTool,
     scopes: [SCOPES.environmentWrite],
   },
   remove_initiate_login_uri: {
     name: 'remove_initiate_login_uri',
-    description: 'Remove (clear) the initiate login URI for an environment. Requires environmentId (format: env_<number>).',
+    description: 'Clear the initiate-login URI for an environment. Use set_initiate_login_uri to set a new one. Use list_redirect_uris to read the current value. Requires the caller OAuth token. This deletes the URI.',
+    annotations: removeTool,
     scopes: [SCOPES.environmentWrite],
   },
   add_post_logout_redirect_uri: {
     name: 'add_post_logout_redirect_uri',
-    description: 'Add a URL to the post-logout redirect URIs list for an environment. After a user logs out, they are redirected to one of these URLs. Requires environmentId (format: env_<number>) and uri (the URL to add).',
+    description: 'Add one URL that a user may be sent to after logout. Use add_redirect_uri for a login callback URL. Use list_redirect_uris to read the current list. Requires the caller OAuth token. Adding a URL that is already on the list leaves the list unchanged.',
+    annotations: writeTool,
     scopes: [SCOPES.environmentWrite],
   },
   remove_post_logout_redirect_uri: {
     name: 'remove_post_logout_redirect_uri',
-    description: 'Remove a URL from the post-logout redirect URIs list for an environment. Requires environmentId (format: env_<number>) and uri (the URL to remove).',
+    description: 'Remove one post-logout redirect URL from an environment. Use remove_redirect_uri to remove a login callback URL. Use list_redirect_uris to read the current list. Requires the caller OAuth token. This deletes that URL from the allowed list.',
+    annotations: removeTool,
     scopes: [SCOPES.environmentWrite],
   },
 } as const;
@@ -196,6 +260,7 @@ export type ToolKey = keyof typeof toolsList;
 export type ToolDefinition = {
   name: ToolKey;
   description: string;
+  annotations: ToolAnnotations;
   registeredTool?: RegisteredTool;
   scopes: string[];
 };

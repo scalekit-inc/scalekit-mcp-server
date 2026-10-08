@@ -30,7 +30,8 @@ export function registerDocsTools(server: McpServer) {
   TOOLS.search_docs.registeredTool = server.tool(
     TOOLS.search_docs.name,
     TOOLS.search_docs.description,
-    { query: z.string().min(1) },
+    { query: z.string().min(1).describe('Keyword or phrase to search in the Scalekit docs.') },
+    TOOLS.search_docs.annotations,
     async ({ query }) => {
       try {
         const docUrls = await getDocUrls();

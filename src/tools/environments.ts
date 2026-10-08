@@ -31,8 +31,9 @@ function listEnvironmentsTool(server: McpServer): RegisteredTool {
     TOOLS.list_environments.description,
     {
       pageToken: z.string().optional().describe('1-based page number (1, 2, 3...). Defaults to first page if not provided.'),
-      pageSize: z.number().int().min(1).max(100).optional().default(20),
+      pageSize: z.number().int().min(1).max(100).optional().default(20).describe('Maximum environments to return. Default 20. Maximum 100.'),
     },
+    TOOLS.list_environments.annotations,
     async ({ pageToken, pageSize }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -76,6 +77,7 @@ function getEnvironmentDetailsTool(server: McpServer): RegisteredTool {
     TOOLS.get_environment_details.name,
     TOOLS.get_environment_details.description,
     { environmentId: environmentIdSchema },
+    TOOLS.get_environment_details.annotations,
     async ({ environmentId }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -100,6 +102,7 @@ function getEnvironmentCredentialsTool(server: McpServer): RegisteredTool {
     TOOLS.get_environment_credentials.name,
     TOOLS.get_environment_credentials.description,
     { environmentId: environmentIdSchema },
+    TOOLS.get_environment_credentials.annotations,
     async ({ environmentId }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -145,6 +148,7 @@ function listEnvironmentRolesTool(server: McpServer): RegisteredTool {
     TOOLS.list_environment_roles.name,
     TOOLS.list_environment_roles.description,
     { environmentId: environmentIdSchema },
+    TOOLS.list_environment_roles.annotations,
     async ({ environmentId }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -186,11 +190,12 @@ function createEnvironmentRolesTool(server: McpServer): RegisteredTool {
     TOOLS.create_environment_role.description,
     {
       environmentId: environmentIdSchema,
-      roleName: z.string().min(1, 'Role name is required'),
-      roleDisplayName: z.string().min(1, 'Role display name is required'),
-      description: z.string().optional().default(''),
-      isDefault: z.boolean().optional().default(false),
+      roleName: z.string().min(1, 'Role name is required').describe('Role name stored on the environment. Must be unique in that environment.'),
+      roleDisplayName: z.string().min(1, 'Role display name is required').describe('Name shown for this role in the Scalekit dashboard.'),
+      description: z.string().optional().default('').describe('Human-readable explanation of the role. Empty when omitted.'),
+      isDefault: z.boolean().optional().default(false).describe('When true, new organization users get this role unless another role is chosen. Default false.'),
     },
+    TOOLS.create_environment_role.annotations,
     async ({ environmentId, roleName, roleDisplayName, description, isDefault }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -232,9 +237,10 @@ function createEnvironmentScopeTool(server: McpServer): RegisteredTool {
     TOOLS.create_environment_scope.description,
     {
       environmentId: environmentIdSchema,
-      scopeName: z.string().min(1, 'Scope name is required'),
-      description: z.string().optional().default(''),
+      scopeName: z.string().min(1, 'Scope name is required').describe('Permission scope name. Must be unique in that environment.'),
+      description: z.string().optional().default('').describe('Human-readable explanation of the scope. Empty when omitted.'),
     },
+    TOOLS.create_environment_scope.annotations,
     async ({ environmentId, scopeName, description }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -271,6 +277,7 @@ function listEnvironmentScopesTool(server: McpServer): RegisteredTool {
     TOOLS.list_environment_scopes.name,
     TOOLS.list_environment_scopes.description,
     { environmentId: environmentIdSchema },
+    TOOLS.list_environment_scopes.annotations,
     async ({ environmentId }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -332,6 +339,7 @@ function listRedirectUrisTool(server: McpServer): RegisteredTool {
     TOOLS.list_redirect_uris.name,
     TOOLS.list_redirect_uris.description,
     { environmentId: environmentIdSchema },
+    TOOLS.list_redirect_uris.annotations,
     async ({ environmentId }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -368,8 +376,9 @@ function addRedirectUriTool(server: McpServer): RegisteredTool {
     TOOLS.add_redirect_uri.description,
     {
       environmentId: environmentIdSchema,
-      uri: z.string().url('Must be a valid URL'),
+      uri: z.string().url('Must be a valid URL').describe('Login callback URL to add to the allowed redirect list.'),
     },
+    TOOLS.add_redirect_uri.annotations,
     async ({ environmentId, uri }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -412,8 +421,9 @@ function removeRedirectUriTool(server: McpServer): RegisteredTool {
     TOOLS.remove_redirect_uri.description,
     {
       environmentId: environmentIdSchema,
-      uri: z.string().url('Must be a valid URL'),
+      uri: z.string().url('Must be a valid URL').describe('Login callback URL to remove from the allowed redirect list.'),
     },
+    TOOLS.remove_redirect_uri.annotations,
     async ({ environmentId, uri }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -458,8 +468,9 @@ function setInitiateLoginUriTool(server: McpServer): RegisteredTool {
     TOOLS.set_initiate_login_uri.description,
     {
       environmentId: environmentIdSchema,
-      uri: z.string().url('Must be a valid URL'),
+      uri: z.string().url('Must be a valid URL').describe('App URL that redirects to the Scalekit authorize endpoint for logins that did not start in the app.'),
     },
+    TOOLS.set_initiate_login_uri.annotations,
     async ({ environmentId, uri }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -491,6 +502,7 @@ function removeInitiateLoginUriTool(server: McpServer): RegisteredTool {
     TOOLS.remove_initiate_login_uri.name,
     TOOLS.remove_initiate_login_uri.description,
     { environmentId: environmentIdSchema },
+    TOOLS.remove_initiate_login_uri.annotations,
     async ({ environmentId }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -523,8 +535,9 @@ function addPostLogoutRedirectUriTool(server: McpServer): RegisteredTool {
     TOOLS.add_post_logout_redirect_uri.description,
     {
       environmentId: environmentIdSchema,
-      uri: z.string().url('Must be a valid URL'),
+      uri: z.string().url('Must be a valid URL').describe('URL to add to the post-logout redirect list.'),
     },
+    TOOLS.add_post_logout_redirect_uri.annotations,
     async ({ environmentId, uri }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
@@ -567,8 +580,9 @@ function removePostLogoutRedirectUriTool(server: McpServer): RegisteredTool {
     TOOLS.remove_post_logout_redirect_uri.description,
     {
       environmentId: environmentIdSchema,
-      uri: z.string().url('Must be a valid URL'),
+      uri: z.string().url('Must be a valid URL').describe('URL to remove from the post-logout redirect list.'),
     },
+    TOOLS.remove_post_logout_redirect_uri.annotations,
     async ({ environmentId, uri }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
