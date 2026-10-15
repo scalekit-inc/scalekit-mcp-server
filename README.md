@@ -1,53 +1,34 @@
-<p align="center">
-  <a href="https://scalekit.com" target="_blank" rel="noopener noreferrer">
-    <picture>
-      <img src="https://cdn.scalekit.cloud/v1/scalekit-logo-dark.svg" height="64">
-    </picture>
-  </a>
-</p>
+# Scalekit MCP Server
 
-<h1 align="center">
-  Scalekit MCP Server
-</h1>
+The official MCP server for Scalekit. Point Cursor, Claude, or another MCP client at it, sign in once, and the agent can set up environments, organizations, and the connectors your users' agents call. The agent acts as that signed-in user. It does not reuse one shared password.
 
-<p align="center">
-  <strong>Auth stack for AI apps ⚡ Official Scalekit MCP Server</strong>
-</p>
+- **Hosted.** `https://mcp.scalekit.com`. No local install for the hosted server.
+- **Connectors.** Set up 500+ connectors and 20,000+ tools for agent integrations.
+- **Admin tools.** Environments, organizations, users, OIDC connections, roles, and scopes.
+- **Clients.** Claude, Cursor, VS Code, Windsurf, Gemini CLI, Codex, and any MCP client.
+- **License.** Apache-2.0.
 
-<p align="center">
-  <a href="https://github.com/scalekit-inc/scalekit-mcp-server/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-  <a href="https://docs.scalekit.com/guides/mcp/overview"><img src="https://img.shields.io/badge/docs-MCP%20Guide-blue" alt="MCP Documentation"></a>
-  <a href="https://mcp.scalekit.com"><img src="https://img.shields.io/badge/hosted-mcp.scalekit.com-green" alt="Hosted MCP Server"></a>
-</p>
+```json
+{
+  "mcpServers": {
+    "scalekit": {
+      "url": "https://mcp.scalekit.com/"
+    }
+  }
+}
+```
 
-<p align="center">
-  Official Model Context Protocol server for AI agents to interact with Scalekit's identity platform through natural language
-</p>
+## Contents
 
-## 🚀 What This MCP Server Enables
+- [Getting started](#getting-started)
+- [Available tools](#available-tools)
+- [Key capabilities](#key-capabilities)
+- [Authentication and security](#authentication--security)
+- [Additional resources](#additional-resources)
 
-- **Natural Language Identity Management**: Manage users, organizations, and connections through AI conversations
-- **OAuth-Protected Access**: Secure AI agent interactions with enterprise authentication
-- **Comprehensive API Coverage**: Full access to Scalekit's identity and access management capabilities
-- **Multi-Client Support**: Works with Claude Code, Claude Desktop, VS Code, Cursor, Windsurf, Gemini CLI, Codex, OpenCode, Roo Code, Zed, Kiro, Warp, v0 by Vercel, and any MCP-compatible client
+## Getting started
 
-## Overview
-
-Use this MCP server as the Scalekit admin console to set up 500+ connectors and 20,000+ tools for all your agent integrations.
-
-## Features
-
-- Environment management and configuration
-- Organization and user management
-- Workspace member administration
-- OIDC connection setup and management
-- MCP server registration and configuration
-- Role and scope management
-- Admin portal link generation
-
-## Configuration
-
-Find your AI coding tool below and follow the steps — your client will prompt you to sign in via OAuth on first use.
+Find your client below. On first use it asks you to sign in with OAuth.
 
 ### Run locally over stdio
 
