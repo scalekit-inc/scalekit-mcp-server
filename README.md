@@ -3,7 +3,7 @@
 The official MCP server for Scalekit. Point Cursor, Claude, or another MCP client at it, sign in once, and the agent can set up environments, organizations, and the connectors your users' agents call. The agent acts as that signed-in user. It does not reuse one shared password.
 
 - **Hosted.** `https://mcp.scalekit.com`. No local install for the hosted server.
-- **Connectors.** Set up 500+ connectors and 20,000+ tools for agent integrations.
+- **Connectors.** Set up 600+ connectors and 35,000+ tools for agent integrations.
 - **Admin tools.** Environments, organizations, users, OIDC connections, roles, and scopes.
 - **Clients.** Claude, Cursor, VS Code, Windsurf, Gemini CLI, Codex, and any MCP client.
 - **License.** Apache-2.0.
