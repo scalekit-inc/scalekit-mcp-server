@@ -1,58 +1,109 @@
 import { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
-import fetch from 'node-fetch';
 import { z } from 'zod';
-import { callerToken, envHeaders, getEnvironmentDomain, oauthRequired } from '../lib/api.js';
+import {
+  ApiError,
+  apiJson,
+  callerToken,
+  describeError,
+  getEnvironmentDomain,
+  oauthRequired,
+  textContent,
+} from '../lib/api.js';
 import { logger } from '../lib/logger.js';
 import { ENDPOINTS } from '../types/endpoints.js';
-import {
-  ListToolsResponse,
-  ScalekitTool,
-} from '../types/index.js';
+import { ListToolsResponse, ScalekitTool } from '../types/index.js';
 import { environmentIdSchema } from '../validators/types.js';
 import { TOOLS } from './index.js';
 
-/** Summary format: group tools by connector, show name + short description. */
-function formatToolsSummary(tools: ScalekitTool[]): string {
-  const grouped = new Map<string, ScalekitTool[]>();
-  for (const tool of tools) {
-    const key = tool.provider || 'UNKNOWN';
-    const list = grouped.get(key) ?? [];
-    list.push(tool);
-    grouped.set(key, list);
-  }
-  const sections: string[] = [];
-  for (const [connector, connectorTools] of grouped) {
-    const lines = connectorTools.map((t) => {
-      const desc = t.definition?.description || t.definition?.display_name || '';
-      return desc ? `  - ${t.definition?.name ?? t.id} — ${desc}` : `  - ${t.definition?.name ?? t.id}`;
-    });
-    sections.push(`${connector} (${connectorTools.length} tool${connectorTools.length === 1 ? '' : 's'}):\n${lines.join('\n')}`);
-  }
-  return sections.join('\n\n');
+/** Actions requested per connector in one backend call. Matches the backend's own default. */
+export const TOOLS_PAGE_SIZE = 300;
+/** Most connectors one search_tools call may cover, to keep the reply a readable size. */
+export const MAX_CONNECTORS_PER_CALL = 5;
+
+interface ConnectorResult {
+  connector: string;
+  tools: ScalekitTool[];
+  totalSize: number;
+  nextPageToken?: string;
 }
 
-/** Full format: complete tool definitions with input schemas. */
+/** Summary format: name and description per action. */
+function formatToolsSummary(tools: ScalekitTool[]): string {
+  return tools
+    .map((t) => {
+      const name = (t.definition?.name as string | undefined) ?? t.id;
+      const desc = (t.definition?.description as string | undefined) || (t.definition?.display_name as string | undefined) || '';
+      return desc ? `  - ${name} — ${desc}` : `  - ${name}`;
+    })
+    .join('\n');
+}
+
+/** Full format: complete definitions with input schemas. */
 function formatToolsFull(tools: ScalekitTool[]): string {
-  const rows = tools
+  return tools
     .map((tool) => {
       const details = [
         `id: ${tool.id}`,
-        `connector: ${tool.provider}`,
         tool.tags?.length ? `tags: ${tool.tags.join(', ')}` : null,
-        tool.definition
-          ? `definition: ${JSON.stringify(tool.definition)}`
-          : null,
+        tool.definition ? `definition: ${JSON.stringify(tool.definition)}` : null,
       ]
         .filter(Boolean)
         .join(' | ');
-      return `- ${details}`;
+      return `  - ${details}`;
     })
     .join('\n');
-  return rows + '\n\nNote: Output schemas are not included in tool definitions. For response structures, refer to the connector\'s official API documentation (see rest_api_info.base_url and rest_api_info.path_template for the upstream endpoint).';
+}
+
+/** Words of the query, split on spaces and underscores, so "send email" matches gmail_send_email. */
+export function queryWords(query: string): string[] {
+  return query
+    .toLowerCase()
+    .split(/[\s_]+/)
+    .filter(Boolean);
+}
+
+/** True when every query word appears in the action's name, display name or description. */
+export function toolMatches(tool: ScalekitTool, words: string[]): boolean {
+  if (words.length === 0) return true;
+  const haystack = [tool.definition?.name, tool.definition?.display_name, tool.definition?.description]
+    .filter((v): v is string => typeof v === 'string')
+    .join(' ')
+    .toLowerCase()
+    .replace(/_/g, ' ');
+  return words.every((w) => haystack.includes(w));
 }
 
 export function registerToolSearchTools(server: McpServer) {
   TOOLS.search_tools.registeredTool = searchToolsTool(server);
+}
+
+async function fetchConnectorTools(
+  token: string,
+  environmentDomain: string,
+  connector: string,
+  identifier: string | undefined,
+  pageToken: string | undefined
+): Promise<ConnectorResult> {
+  // Only the connector filter is sent. filter.query is never sent: when it is set the backend
+  // drops the connector filter and scans every tool, so the keyword is matched here instead.
+  const params = new URLSearchParams({ page_size: String(TOOLS_PAGE_SIZE) });
+  if (identifier) {
+    // Custom connectors: the backend resolves the connected account and adds its own tools.
+    params.set('filter.connector', connector);
+    params.set('filter.identifier', identifier);
+  } else {
+    params.set('filter.provider', connector);
+  }
+  if (pageToken) params.set('page_token', pageToken);
+
+  const data = await apiJson<ListToolsResponse>(token, environmentDomain, 'GET', `${ENDPOINTS.tools.list}?${params.toString()}`);
+  const tools = data.tools ?? [];
+  return {
+    connector,
+    tools,
+    totalSize: data.total_size ?? tools.length,
+    nextPageToken: data.next_page_token || undefined,
+  };
 }
 
 function searchToolsTool(server: McpServer): RegisteredTool {
@@ -61,187 +112,110 @@ function searchToolsTool(server: McpServer): RegisteredTool {
     TOOLS.search_tools.description,
     {
       environmentId: environmentIdSchema,
-      connector: z
-        .string()
-        .optional()
-        .describe('For standard connectors, the connector identifier as returned by search_connectors (e.g. "GMAIL", "HUBSPOT", "NOTION", "SLACK"). For custom connectors, the connection name (e.g. "My Sentry", "Bitly Production").'),
-      identifier: z
-        .string()
-        .optional()
-        .describe('The connected account identifier (e.g. a user ID, email, or app-specific key stored by the developer). Required when searching tools for a custom connector. This is the same identifier used when creating the connected account.'),
+      connectors: z
+        .array(z.string().min(1).max(255))
+        .min(1, 'Pass at least one connector ID. Find IDs with search_connectors.')
+        .max(MAX_CONNECTORS_PER_CALL, `Pass at most ${MAX_CONNECTORS_PER_CALL} connectors per call.`)
+        .describe('Connector IDs from search_connectors, for example ["GMAIL", "SLACK"]. For a custom connector, pass its connection name and set identifier.'),
       query: z
         .string()
         .min(3, 'Query must be at least 3 characters')
         .optional()
-        .describe('Search by action or capability (e.g. "search contacts", "send email", "create deal").'),
+        .describe('Keyword matched against action name and description, only within these connectors, for example "send email".'),
       summary: z
         .boolean()
         .optional()
         .default(true)
-        .describe(
-          'When true (default), returns tools grouped by connector with name and description. Set to false for full tool definitions including input schemas.'
-        ),
-      pageSize: z.number().int().min(1).max(30).optional().default(20).describe('Maximum tools to return. Default 20. Maximum 30.'),
+        .describe('true (default): action name and description. false: full definitions with input schemas.'),
+      identifier: z
+        .string()
+        .optional()
+        .describe('Connected account identifier. Needed only for custom connectors, whose actions depend on the connected account.'),
       pageToken: z
         .string()
         .optional()
-        .describe('Opaque token from a previous response to fetch the next page.'),
+        .describe(`Only with a single connector that has more than ${TOOLS_PAGE_SIZE} actions: the token from the previous reply.`),
     },
     TOOLS.search_tools.annotations,
-    async (
-      { environmentId, connector, identifier, query, summary, pageSize, pageToken },
-      context
-    ) => {
-      if (!connector && !query) {
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: 'At least one search criterion is required: provide a connector or query.',
-            },
-          ],
-        };
-      }
-
+    async ({ environmentId, connectors, query, summary, identifier, pageToken }, context) => {
       const token = callerToken(context);
       if (!token) return oauthRequired();
 
-      try {
-        const environmentDomain = await getEnvironmentDomain(
-          token,
-          environmentId
-        );
-
-        return await listToolsMode(
-          token,
-          environmentDomain,
-          { connector, identifier, query, summary },
-          pageSize,
-          pageToken
-        );
-      } catch (error) {
-        logger.error('Failed to search tools', error);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'Failed to search tools. Please try again later.',
-            },
-          ],
-        };
+      if (pageToken && connectors.length > 1) {
+        return textContent('pageToken works with a single connector only. Pass just the connector the token came from.', { isError: true });
       }
-    }
-  );
-}
 
-async function fetchTools(
-  token: string,
-  environmentDomain: string,
-  apiFilters: { provider?: string; query?: string; connector?: string; identifier?: string },
-  pageSize: number,
-  pageToken?: string
-): Promise<ListToolsResponse> {
-  const params = new URLSearchParams({ page_size: String(pageSize) });
-  if (pageToken) params.set('page_token', pageToken);
-  if (apiFilters.provider) params.set('filter.provider', apiFilters.provider);
-  if (apiFilters.query) params.set('filter.query', apiFilters.query);
-  if (apiFilters.connector) params.set('filter.connector', apiFilters.connector);
-  if (apiFilters.identifier) params.set('filter.identifier', apiFilters.identifier);
+      // Scalekit connector IDs are upper case; dedupe after normalising.
+      const ids = [...new Set(connectors.map((c) => c.trim().toUpperCase()))];
+      const started = Date.now();
 
-  const res = await fetch(
-    `${ENDPOINTS.tools.list}?${params.toString()}`,
-    { headers: envHeaders(token, environmentDomain) }
-  );
+      let environmentDomain: string;
+      try {
+        environmentDomain = await getEnvironmentDomain(token, environmentId);
+      } catch (error) {
+        logger.error(`search_tools: environment lookup failed environmentId=${environmentId}: ${describeError(error)}`);
+        return textContent('Failed to read the environment. Check the environment ID and retry.', { isError: true });
+      }
 
-  if (!res.ok) {
-    const errorText = await res.text();
-    logger.error(`Failed to search tools: ${res.status} ${errorText}`);
-    throw new Error(`Failed to search tools: ${res.statusText}`);
-  }
-
-  return (await res.json()) as ListToolsResponse;
-}
-
-async function listToolsMode(
-  token: string,
-  environmentDomain: string,
-  filters: {
-    connector?: string;
-    identifier?: string;
-    query?: string;
-    summary?: boolean;
-  },
-  pageSize: number,
-  pageToken?: string
-) {
-  const connector = filters.connector?.toUpperCase();
-  let data: ListToolsResponse;
-  let tools: ScalekitTool[];
-  let clientFiltered = false;
-
-  if (connector && filters.identifier) {
-    // Identifier provided: use filter.connector + filter.identifier so the backend
-    // resolves the connected account and includes custom MCP tools.
-    data = await fetchTools(token, environmentDomain, { connector, identifier: filters.identifier, query: filters.query }, pageSize, pageToken);
-    tools = data.tools ?? [];
-    if (tools.length === 0) {
-      return {
-        content: [{
-          type: 'text' as const,
-          text: `No tools found for connection "${filters.connector}" with identifier "${filters.identifier}". This usually means either: (1) a custom connection has not been created for this connector in the environment, or (2) a connected account has not been set up for this identifier. Verify both in the Scalekit dashboard before retrying.`,
-        }],
-      };
-    }
-  } else if (connector) {
-    // Standard connector: filter by provider
-    data = await fetchTools(token, environmentDomain, { provider: connector, query: filters.query }, pageSize, pageToken);
-    tools = data.tools ?? [];
-
-    // If exact match returns nothing, fall back to client-side partial match
-    if (tools.length === 0 && !pageToken) {
-      data = await fetchTools(token, environmentDomain, { query: filters.query }, pageSize);
-      tools = (data.tools ?? []).filter(
-        (t) => t.provider?.toUpperCase().includes(connector)
+      const settled = await Promise.allSettled(
+        ids.map((id) => fetchConnectorTools(token, environmentDomain, id, identifier, pageToken))
       );
-      clientFiltered = true;
+      const failed = settled
+        .map((r, i) => ({ r, id: ids[i] }))
+        .filter((x): x is { r: PromiseRejectedResult; id: string } => x.r.status === 'rejected');
+      if (failed.length) {
+        for (const f of failed) {
+          logger.error(`search_tools: connector call failed environmentId=${environmentId} connector=${f.id}: ${describeError(f.r.reason)}`);
+        }
+        const detail = failed
+          .map((f) => (f.r.reason instanceof ApiError && f.r.reason.isClientError ? `${f.id} (${f.r.reason.apiMessage})` : f.id))
+          .join(', ');
+        return textContent(`Failed to load actions for: ${detail}. No partial results were returned. Retry the call.`, { isError: true });
+      }
+
+      const results = settled.map((r) => (r as PromiseFulfilledResult<ConnectorResult>).value);
+      const words = query ? queryWords(query) : [];
+      const sections: string[] = [];
+      const notes: string[] = [];
+      let total = 0;
+      let rows = 0;
+
+      for (const res of results) {
+        rows += res.tools.length;
+        if (res.tools.length === 0 && !pageToken) {
+          notes.push(
+            identifier
+              ? `No actions for connection "${res.connector}" with identifier "${identifier}". Check that the custom connection exists and that the identifier has a connected account.`
+              : `No connector named ${res.connector}. Find the ID with search_connectors.`
+          );
+          continue;
+        }
+        const matched = res.tools.filter((t) => toolMatches(t, words));
+        total += matched.length;
+        if (matched.length) {
+          const body = summary ? formatToolsSummary(matched) : formatToolsFull(matched);
+          sections.push(`${res.connector} (${matched.length} tool${matched.length === 1 ? '' : 's'}):\n${body}`);
+        }
+        if (res.nextPageToken) {
+          notes.push(
+            results.length === 1
+              ? `${res.connector} has more than ${TOOLS_PAGE_SIZE} actions (${res.totalSize} total). Next page token: ${res.nextPageToken}`
+              : `${res.connector} has more than ${TOOLS_PAGE_SIZE} actions (${res.totalSize} total). Call search_tools with only ${res.connector} to page through the rest.`
+          );
+        }
+      }
+
+      logger.info(
+        `search_tools: environmentId=${environmentId} connectors=${ids.join(',')} query=${query ?? ''} summary=${summary} rows=${rows} matches=${total} durationMs=${Date.now() - started}`
+      );
+
+      const searchDesc = [`connectors=${ids.join(', ')}`, query ? `query="${query}"` : null].filter(Boolean).join(', ');
+      const outputSchemaNote = summary
+        ? ''
+        : '\n\nNote: Output schemas are not included. For response shapes, see the connector\'s API docs (rest_api_info.base_url and rest_api_info.path_template point at the upstream endpoint).';
+      const body = sections.join('\n\n') || '(no matching actions)';
+      const noteText = notes.length ? `\n\n${notes.join('\n')}` : '';
+      return textContent(`Tools matching ${searchDesc} — ${total} total\n\n${body}${noteText}${outputSchemaNote}`);
     }
-  } else {
-    data = await fetchTools(token, environmentDomain, { query: filters.query }, pageSize, pageToken);
-    tools = data.tools ?? [];
-  }
-
-  const count = clientFiltered ? tools.length : (data.total_size ?? tools.length);
-
-  const body = filters.summary
-    ? formatToolsSummary(tools)
-    : formatToolsFull(tools);
-
-  const pagination = !clientFiltered && data.next_page_token
-    ? `\n\nNext page token: ${data.next_page_token}`
-    : '';
-  const prev = !clientFiltered && data.prev_page_token
-    ? `\nPrevious page token: ${data.prev_page_token}`
-    : '';
-
-  const searchDesc = [
-    filters.connector ? `connector=${filters.connector}` : null,
-    filters.query ? `query="${filters.query}"` : null,
-  ]
-    .filter(Boolean)
-    .join(', ');
-
-  // When searching by query alone, hint that custom connector tools require
-  // connector + identifier to be found.
-  const customToolHint = !filters.identifier
-    ? '\n\nNote: This search only covers standard connector tools. To search tools from custom connectors, also provide the connection name (in the connector param) and the connected account identifier (the identifier used when the connected account was created).'
-    : '';
-
-  return {
-    content: [
-      {
-        type: 'text' as const,
-        text: `Tools${searchDesc ? ` matching ${searchDesc}` : ''} — ${count} total\n\n${body || '(no tools found)'}${pagination}${prev}${customToolHint}`,
-      },
-    ],
-  };
+  );
 }

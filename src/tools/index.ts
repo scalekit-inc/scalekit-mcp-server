@@ -1,12 +1,15 @@
 import { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import { SCOPES } from '../types/scopes.js';
+import { registerAgentkitConnectionTools } from './agentkit-connections.js';
 import { registerConnectionTools } from './connections.js';
+import { registerConnectorTools } from './connectors.js';
 import { registerDocsTools } from './docs.js';
 import { registerEnvironmentTools } from './environments.js';
 import { registerOrganizationTools } from './organizations.js';
 import { registerResourceTools } from './resource.js';
 import { registerToolSearchTools } from './tool-search.js';
+import { registerVirtualMcpTools } from './virtual-mcp.js';
 import { registerWorkspaceTools } from './workspace.js';
 
 const readTool: ToolAnnotations = {
@@ -195,15 +198,81 @@ const toolsList = {
   },
   search_connectors: {
     name: 'search_connectors',
-    description: 'Search the connector catalog in one environment, one page at a time. Examples are Google, Notion, and Slack. Use search_tools to search actions on a connector. This tool does not list connected accounts. Use list_connected_accounts for those. Requires the caller OAuth token.',
+    description: 'Find connectors, such as Gmail, Notion or Slack, by keyword, or list every connector with all set to true. Use this first to get a connector ID, then pass that ID to get_connector, to search_tools to see its actions, or to create_agentkit_connection to set it up. Results come back 20 at a time with a page token; all returns every connector in a compact format in one call. This tool does not list connected accounts. Use list_connected_accounts for those. Requires the caller OAuth token.',
+    annotations: readTool,
+    scopes: [SCOPES.environmentRead],
+  },
+  get_connector: {
+    name: 'get_connector',
+    description: 'Read one connector by its exact ID: display name, description, categories, whether it is a custom connector, and the AgentKit connections it already has in this environment. Use search_connectors to find an ID by keyword. Use search_tools to see the connector actions. Requires the caller OAuth token.',
     annotations: readTool,
     scopes: [SCOPES.environmentRead],
   },
   search_tools: {
     name: 'search_tools',
-    description: 'Search actions exposed by connectors in one environment, one page at a time. Use search_connectors to find the connector itself. This tool does not call the action. Output schemas are not returned. Read the connector API docs for the response shape. Requires the caller OAuth token.',
+    description: 'Search the actions available on specific connectors, such as GMAIL or SLACK. Call search_connectors first to find each connector ID, then pass one to five IDs here. An optional keyword narrows the results by action name or description, only within those connectors. Returns up to 300 actions per connector. This tool does not search every connector at once and does not run an action. Output schemas are not returned. Requires the caller OAuth token.',
     annotations: readTool,
     scopes: [SCOPES.environmentRead],
+  },
+  create_agentkit_connection: {
+    name: 'create_agentkit_connection',
+    description: 'Create one AgentKit connection for a connector, so agents can act in that app for each user through their own connected account. Use search_connectors to find the connector ID and list_agentkit_connections to see connections that already exist. Use update_agentkit_connection afterwards to change scopes or set your own OAuth client. Connections created here are always per user: org-wide connections, where one shared account acts for every user, are not supported through MCP. Create those in the Scalekit dashboard. Requires the caller OAuth token. A duplicate connection name is rejected.',
+    annotations: createTool,
+    scopes: [SCOPES.environmentWrite],
+  },
+  update_agentkit_connection: {
+    name: 'update_agentkit_connection',
+    description: 'Change settings on one AgentKit connection, such as its scopes, its own OAuth client ID and secret, or its name. Send only what should change; everything else keeps its stored value. Use get_agentkit_connection to read the current settings and find the connection ID. Sending a client ID or secret turns off Scalekit-managed credentials unless useScalekitCreds is also sent. This tool does not change the auth mode. Requires the caller OAuth token.',
+    annotations: writeTool,
+    scopes: [SCOPES.environmentWrite],
+  },
+  get_agentkit_connection: {
+    name: 'get_agentkit_connection',
+    description: 'Read one AgentKit connection by name or ID, including its OAuth settings, scopes and MCP URL. The client secret is never shown. Use list_agentkit_connections to find a name. Requires the caller OAuth token.',
+    annotations: readTool,
+    scopes: [SCOPES.environmentRead],
+  },
+  list_agentkit_connections: {
+    name: 'list_agentkit_connections',
+    description: 'List AgentKit connections in one environment, newest first, one page at a time. Each row has the connection ID, name, connector, auth type and auth mode. Use get_agentkit_connection to read one connection settings. This tool does not list SSO connections. Use list_environment_connections for those. Requires the caller OAuth token.',
+    annotations: readTool,
+    scopes: [SCOPES.environmentRead],
+  },
+  create_virtual_mcp_server: {
+    name: 'create_virtual_mcp_server',
+    description: 'Create one virtual MCP server that offers actions from one or more AgentKit connections behind a single MCP URL. Use list_agentkit_connections for connection names and search_tools for action names; leave tools out to include every action of a connection. Returns the server ID and its MCP URL. The name cannot be changed later. Requires the caller OAuth token.',
+    annotations: createTool,
+    scopes: [SCOPES.environmentWrite],
+  },
+  get_virtual_mcp_server: {
+    name: 'get_virtual_mcp_server',
+    description: 'Read one virtual MCP server by ID, including its MCP URL, tool exposure mode, and the connections and actions it includes. Use list_virtual_mcp_servers to find an ID. Requires the caller OAuth token.',
+    annotations: readTool,
+    scopes: [SCOPES.environmentRead],
+  },
+  list_virtual_mcp_servers: {
+    name: 'list_virtual_mcp_servers',
+    description: 'List virtual MCP servers in one environment, one page at a time, with each server ID, name, MCP URL and connections. Use get_virtual_mcp_server to read one server. This tool does not list MCP servers registered for MCP auth. Use list_mcp_servers for those. Requires the caller OAuth token.',
+    annotations: readTool,
+    scopes: [SCOPES.environmentRead],
+  },
+  update_virtual_mcp_server: {
+    name: 'update_virtual_mcp_server',
+    description: 'Change the description, connections or tool exposure mode of one virtual MCP server. Fields you leave out keep their current value; connections, when sent, replaces the whole list. The name cannot be changed. Switching to DIRECT fails with more than 25 connections or when two connections have actions with the same name. After a change, MCP clients must list tools again; existing session tokens keep working. Use get_virtual_mcp_server to read the current settings. Requires the caller OAuth token.',
+    annotations: writeTool,
+    scopes: [SCOPES.environmentWrite],
+  },
+  delete_virtual_mcp_server: {
+    name: 'delete_virtual_mcp_server',
+    description: 'Delete one virtual MCP server. Its MCP URL stops working. Users keep their connected accounts, and the connections are not deleted. This cannot be undone. Requires the caller OAuth token.',
+    annotations: removeTool,
+    scopes: [SCOPES.environmentWrite],
+  },
+  create_mcp_session_token: {
+    name: 'create_mcp_session_token',
+    description: 'Create a 6-hour session token for the signed-in user, for one virtual MCP server. The token is always issued for you, identified by a short hash of your user ID, and cannot be created for anyone else. For a DIRECT server, every connection in it needs an active connected account for that identifier first, or the call fails. Returns the token, its expiry and the MCP URL it works on. Treat the token as a secret. Requires the caller OAuth token.',
+    annotations: createTool,
+    scopes: [SCOPES.environmentWrite],
   },
   search_docs: {
     name: 'search_docs',
@@ -277,6 +346,9 @@ export function registerTools(server: McpServer) {
     registerOrganizationTools(server)
     registerWorkspaceTools(server);
     registerConnectionTools(server);
+    registerConnectorTools(server);
+    registerAgentkitConnectionTools(server);
+    registerVirtualMcpTools(server);
     registerResourceTools(server);
     registerToolSearchTools(server);
     registerDocsTools(server);

@@ -343,3 +343,80 @@ export interface EnableConnectionResponse {
 export interface CreateResourceResponse {
   resource: Resource;
 }
+
+/** AgentKit app connection from GET/POST/PATCH /api/v1/agentkit/connection. */
+export interface AgentkitConnection {
+  id: string;
+  connection_name?: string;
+  provider: string;
+  type?: string;
+  auth_mode?: string;
+  create_time?: string;
+  update_time?: string;
+  connection_mcp_url?: string;
+  oauth_config?: {
+    client_id?: string;
+    client_secret?: string;
+    scopes?: string[];
+    redirect_uri?: string;
+    pkce_enabled?: boolean;
+    use_scalekit_creds?: boolean;
+    extra_authorize_params?: Record<string, string>;
+  };
+  provider_configurations?: Record<string, string>;
+}
+
+export interface AgentkitConnectionResponse {
+  connection: AgentkitConnection;
+}
+
+/** Row of GET /api/v1/agentkit/connection (list). */
+export interface AgentkitConnectionSummary {
+  id: string;
+  connection_name?: string;
+  provider: string;
+  type?: string;
+  auth_mode?: string;
+  create_time?: string;
+}
+
+export interface ListAgentkitConnectionsResponse {
+  connections?: AgentkitConnectionSummary[];
+  next_page_token?: string;
+  prev_page_token?: string;
+  total_size?: number;
+}
+
+/** One connection inside a virtual MCP server (MCP configuration). */
+export interface McpConfigConnectionToolMapping {
+  connection_id?: string;
+  connection_name: string;
+  provider?: string;
+  tools?: string[];
+}
+
+/** Virtual MCP server, stored by the backend as an MCP configuration (/api/v1/mcp/configs). */
+export interface McpConfig {
+  id: string;
+  name: string;
+  description?: string;
+  connection_tool_mappings?: McpConfigConnectionToolMapping[];
+  mcp_server_url?: string;
+  tool_exposure?: string;
+}
+
+export interface McpConfigResponse {
+  config: McpConfig;
+}
+
+export interface ListMcpConfigsResponse {
+  configs?: McpConfig[];
+  next_page_token?: string;
+  prev_page_token?: string;
+  total_size?: number;
+}
+
+export interface CreateMcpSessionTokenResponse {
+  token: string;
+  expires_at: string;
+}
