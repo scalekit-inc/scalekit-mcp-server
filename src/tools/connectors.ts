@@ -28,6 +28,22 @@ type ConnectorType = 'SCALEKIT' | 'CUSTOM' | 'ALL';
 /** Prefix for the page tokens this server makes when it pages keyword matches itself. */
 const LOCAL_PAGE_TOKEN_PREFIX = 'csearch_';
 
+/**
+ * Connector traits read from its auth patterns:
+ * - scalekitCredentials: a connection can use Scalekit-managed OAuth credentials
+ *   (oauth_config.allow_use_scalekit_credentials), so the customer needs no OAuth app of their own.
+ * - mcp: the connector is served through an MCP server (is_mcp).
+ * - authTypes: the auth types the connector supports, for example OAUTH or API_KEY.
+ */
+export function connectorTraits(p: Provider): { scalekitCredentials: boolean; mcp: boolean; authTypes: string[] } {
+  const patterns = Array.isArray(p.auth_patterns) ? p.auth_patterns : [];
+  return {
+    scalekitCredentials: patterns.some((a) => a?.oauth_config?.allow_use_scalekit_credentials === true),
+    mcp: patterns.some((a) => a?.is_mcp === true),
+    authTypes: [...new Set(patterns.map((a) => a?.type).filter((t): t is string => typeof t === 'string' && t.length > 0))],
+  };
+}
+
 export function registerConnectorTools(server: McpServer) {
   TOOLS.search_connectors.registeredTool = searchConnectorsTool(server);
   TOOLS.get_connector.registeredTool = getConnectorTool(server);
@@ -41,11 +57,14 @@ function providerTypeParam(connectorType: ConnectorType): string {
 function formatProviders(providers: Provider[], setupMap?: Map<string, AppConnection[]>): string {
   return providers
     .map((p) => {
+      const traits = connectorTraits(p);
       const details = [
         `identifier: ${p.identifier}`,
         `display_name: ${p.display_name}`,
         p.description ? `description: ${p.description}` : null,
         p.categories?.length ? `categories: ${p.categories.join(', ')}` : null,
+        `scalekit_credentials: ${traits.scalekitCredentials ? 'available' : 'not available'}`,
+        traits.mcp ? 'mcp: true' : null,
         p.is_custom ? `custom: true` : null,
         p.is_custom_mcp ? `custom_mcp: true` : null,
         p.coming_soon ? `coming_soon: true` : null,
@@ -63,6 +82,9 @@ function formatProvidersCompact(providers: Provider[], setupMap?: Map<string, Ap
     .map((p) => {
       const parts = [p.identifier, p.display_name];
       if (p.categories?.length) parts.push(p.categories.join(', '));
+      const t = connectorTraits(p);
+      if (t.scalekitCredentials) parts.push('scalekit_credentials');
+      if (t.mcp) parts.push('mcp');
       if (setupMap) parts.push(`setup: ${formatSetup(setupMap.get(p.identifier))}`);
       return `- ${parts.join(' | ')}`;
     })
@@ -253,12 +275,16 @@ function getConnectorTool(server: McpServer): RegisteredTool {
           return textContent(`No connector with ID "${connector}". Find the ID with search_connectors.`, { isError: true });
         }
 
+        const traits = connectorTraits(provider);
         const lines = [
           `Connector ${provider.identifier}`,
           '',
           `display_name: ${provider.display_name}`,
           provider.description ? `description: ${provider.description}` : null,
           provider.categories?.length ? `categories: ${provider.categories.join(', ')}` : null,
+          `scalekit_credentials: ${traits.scalekitCredentials ? 'available (a connection can use Scalekit-managed OAuth credentials)' : 'not available (a connection needs your own OAuth client ID and secret)'}`,
+          `mcp: ${traits.mcp ? 'true' : 'false'}`,
+          traits.authTypes.length ? `auth_types: ${traits.authTypes.join(', ')}` : null,
           `custom: ${provider.is_custom ? 'true' : 'false'}`,
           provider.is_custom_mcp ? 'custom_mcp: true' : null,
           provider.coming_soon ? 'coming_soon: true' : null,

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { callerIdentifier } from '../src/lib/api.js';
 import { fetchAllPages, PagingError } from '../src/lib/paging.js';
+import { connectorTraits } from '../src/tools/connectors.js';
 import { queryWords, toolMatches } from '../src/tools/tool-search.js';
 import { callerTokenWith } from './helpers.js';
 
@@ -88,6 +89,21 @@ describe('callerIdentifier', () => {
     assert.equal(callerIdentifier(callerTokenWith({ email: 'a@b.c' })), undefined);
     assert.equal(callerIdentifier('not-a-jwt'), undefined);
     assert.equal(callerIdentifier(''), undefined);
+  });
+});
+
+describe('connectorTraits', () => {
+  const base = { id: 'p', identifier: 'X', display_name: 'X', description: '', categories: [], icon_src: '', display_priority: 0, coming_soon: false, proxy_url: '', proxy_enabled: false, is_custom: false, is_custom_mcp: false };
+
+  it('reads Scalekit credentials and MCP from any auth pattern', () => {
+    const t = connectorTraits({ ...base, auth_patterns: [{ type: 'API_KEY' }, { type: 'OAUTH', is_mcp: true, oauth_config: { allow_use_scalekit_credentials: true } }] });
+    assert.deepEqual(t, { scalekitCredentials: true, mcp: true, authTypes: ['API_KEY', 'OAUTH'] });
+  });
+
+  it('treats missing or malformed auth patterns as no Scalekit credentials and not MCP', () => {
+    assert.deepEqual(connectorTraits(base), { scalekitCredentials: false, mcp: false, authTypes: [] });
+    assert.deepEqual(connectorTraits({ ...base, auth_patterns: null as any }), { scalekitCredentials: false, mcp: false, authTypes: [] });
+    assert.deepEqual(connectorTraits({ ...base, auth_patterns: [null as any, { oauth_config: { allow_use_scalekit_credentials: 'true' as any } }] }), { scalekitCredentials: false, mcp: false, authTypes: [] });
   });
 });
 

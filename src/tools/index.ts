@@ -198,13 +198,13 @@ const toolsList = {
   },
   search_connectors: {
     name: 'search_connectors',
-    description: 'Find connectors, such as Gmail, Notion or Slack, by keyword, or list every connector with all set to true. Use this first to get a connector ID, then pass that ID to get_connector, to search_tools to see its actions, or to create_agentkit_connection to set it up. Results come back 20 at a time with a page token; all returns every connector in a compact format in one call. This tool does not list connected accounts. Use list_connected_accounts for those. Requires the caller OAuth token.',
+    description: 'Find connectors, such as Gmail, Notion or Slack, by keyword, or list every connector with all set to true. Use this first to get a connector ID, then pass that ID to get_connector, to search_tools to see its actions, or to create_agentkit_connection to set it up. Each result shows scalekit_credentials (available when a connection can use Scalekit-managed OAuth credentials, so no OAuth app of your own is needed) and mcp: true for connectors served through an MCP server. Results come back 20 at a time with a page token; all returns every connector in a compact format in one call. This tool does not list connected accounts. Use list_connected_accounts for those. Requires the caller OAuth token.',
     annotations: readTool,
     scopes: [SCOPES.environmentRead],
   },
   get_connector: {
     name: 'get_connector',
-    description: 'Read one connector by its exact ID: display name, description, categories, whether it is a custom connector, and the AgentKit connections it already has in this environment. Use search_connectors to find an ID by keyword. Use search_tools to see the connector actions. Requires the caller OAuth token.',
+    description: 'Read one connector by its exact ID: display name, description, categories, supported auth types, whether connections can use Scalekit-managed OAuth credentials (scalekit_credentials), whether it is served through an MCP server (mcp), whether it is a custom connector, and the AgentKit connections it already has in this environment. Use search_connectors to find an ID by keyword. Use search_tools to see the connector actions. Requires the caller OAuth token.',
     annotations: readTool,
     scopes: [SCOPES.environmentRead],
   },

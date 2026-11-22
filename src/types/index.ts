@@ -248,6 +248,18 @@ export interface Provider {
   proxy_enabled: boolean;
   is_custom: boolean;
   is_custom_mcp: boolean;
+  /** How users authenticate with this connector; one entry per supported auth type. */
+  auth_patterns?: ProviderAuthPattern[];
+}
+
+export interface ProviderAuthPattern {
+  type?: string;
+  /** The connector is served through an MCP server. */
+  is_mcp?: boolean;
+  oauth_config?: {
+    /** Connections can use Scalekit-managed OAuth credentials instead of the customer's own app. */
+    allow_use_scalekit_credentials?: boolean;
+  };
 }
 
 /** App-level connection from GET /api/v1/connections/app (AgentKit connectors set up in the environment). */

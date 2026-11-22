@@ -95,9 +95,21 @@ describe('tool registration', () => {
 
 describe('search_connectors', () => {
   // 450 connectors across three pages of 200; the match sits on the last page.
-  const catalog = Array.from({ length: 450 }, (_, i) =>
-    i === 430 ? provider(i, { identifier: 'GMAIL', display_name: 'Gmail', categories: ['email'] }) : provider(i)
-  );
+  const catalog = Array.from({ length: 450 }, (_, i) => {
+    if (i === 430) {
+      return provider(i, {
+        identifier: 'GMAIL', display_name: 'Gmail', categories: ['email'],
+        auth_patterns: [{ type: 'OAUTH', oauth_config: { allow_use_scalekit_credentials: true } }],
+      });
+    }
+    if (i === 431) {
+      return provider(i, {
+        identifier: 'GRANOLAMCP', display_name: 'Granola MCP', categories: ['notes'],
+        auth_patterns: [{ type: 'OAUTH', is_mcp: true, oauth_config: { allow_use_scalekit_credentials: false } }],
+      });
+    }
+    return provider(i);
+  });
   const providersRoute = (req: RecordedRequest) => {
     if (req.path !== '/api/v1/providers') return undefined;
     const size = Number(req.query.get('page_size'));
@@ -117,6 +129,20 @@ describe('search_connectors', () => {
     for (const r of calls) assert.equal(r.query.get('page_size'), '200');
     assert.deepEqual(calls.map((r) => r.query.get('page_token')), [null, '200', '400']);
     assertScoped(calls);
+  });
+
+  it('shows whether Scalekit-managed credentials are available and whether the connector is MCP', async () => {
+    backend.reset(providersRoute);
+    const gmail = await call('search_connectors', { environmentId: ENV_ID, query: 'gmail' });
+    assert.match(gmail.text, /identifier: GMAIL .*scalekit_credentials: available/);
+    assert.ok(!/GMAIL[^\n]*mcp: true/.test(gmail.text));
+    const granola = await call('search_connectors', { environmentId: ENV_ID, query: 'granola' });
+    assert.match(granola.text, /identifier: GRANOLAMCP .*scalekit_credentials: not available \| mcp: true/);
+    const plain = await call('search_connectors', { environmentId: ENV_ID, query: 'Connector 7' });
+    assert.match(plain.text, /CONN7 .*scalekit_credentials: not available/, 'no auth patterns reads as not available');
+    const all = await call('search_connectors', { environmentId: ENV_ID, all: true });
+    assert.match(all.text, /- GMAIL \| Gmail \| email \| scalekit_credentials\n/);
+    assert.match(all.text, /- GRANOLAMCP \| Granola MCP \| notes \| mcp\n/);
   });
 
   it('pages keyword matches locally with its own token', async () => {
@@ -197,7 +223,18 @@ describe('get_connector', () => {
   it('reads the connector and its existing connections', async () => {
     backend.reset((req) => {
       if (req.path === '/api/v1/providers' && req.query.get('identifier') === 'GMAIL') {
-        return { body: { providers: [{ identifier: 'GMAIL', display_name: 'Gmail', description: 'Mail', categories: ['email'] }] } };
+        return {
+          body: {
+            providers: [{
+              identifier: 'GMAIL', display_name: 'Gmail', description: 'Mail', categories: ['email'],
+              auth_patterns: [
+                { type: 'OAUTH', is_mcp: true, oauth_config: { allow_use_scalekit_credentials: true } },
+                { type: 'API_KEY' },
+                { type: 'OAUTH' },
+              ],
+            }],
+          },
+        };
       }
       if (req.path === '/api/v1/providers') return { body: { providers: [] } };
       if (req.path === '/api/v1/agentkit/connection') {
@@ -210,6 +247,9 @@ describe('get_connector', () => {
     assert.equal(res.isError, false, res.text);
     assert.match(res.text, /Connector GMAIL/);
     assert.match(res.text, /connections in this environment: gmail-work \(conn_1, OAUTH\)/);
+    assert.match(res.text, /scalekit_credentials: available/);
+    assert.match(res.text, /mcp: true/);
+    assert.match(res.text, /auth_types: OAUTH, API_KEY\n/, 'auth types deduplicated');
     assertScoped(backend.apiRequests());
   });
 
