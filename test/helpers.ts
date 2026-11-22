@@ -13,6 +13,8 @@ export interface RecordedRequest {
 export interface FakeResponse {
   status?: number;
   body?: unknown;
+  /** Hold the response this long, to simulate a slow backend call. */
+  delayMs?: number;
 }
 
 export type Route = (req: RecordedRequest) => FakeResponse | undefined;
@@ -70,9 +72,11 @@ export class FakeBackend {
       } else {
         out = this.route(recorded);
       }
-      out = out ?? { status: 404, body: { code: 5, message: `no fake route for ${recorded.method} ${recorded.path}` } };
-      res.writeHead(out.status ?? 200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(out.body ?? {}));
+      const final = out ?? { status: 404, body: { code: 5, message: `no fake route for ${recorded.method} ${recorded.path}` } };
+      setTimeout(() => {
+        res.writeHead(final.status ?? 200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(final.body ?? {}));
+      }, final.delayMs ?? 0);
     });
   }
 }

@@ -1,4 +1,3 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { Scalekit, TokenValidationOptions } from '@scalekit-sdk/node';
 import cors from 'cors';
@@ -8,33 +7,11 @@ import { instrumentServer, posthog } from './lib/analytics.js';
 import { oauthProtectedResourceHandler } from './lib/auth.js';
 import { logger } from './lib/logger.js';
 import { setupTransportRoutes } from './lib/transport.js';
-import { registerResources } from './resources/index.js';
-import { registerTools, TOOLS } from './tools/index.js';
+import { createMcpServer } from './server.js';
+import { TOOLS } from './tools/index.js';
 import { OAUTH_PROTECTED_RESOURCE_PATH, WWWHeader } from './types/endpoints.js';
 
 const PORT = config.port;
-const server = new McpServer(
-  { name: config.serverName, version: config.serverVersion },
-  {
-    instructions: `You have access to Scalekit's documentation via docs:// resources and a search_docs tool.
-
-PREFERRED WORKFLOW:
-1. For any question about how to use Scalekit, start by reading docs://index to understand which section covers the topic.
-2. Then read the specific docs:// resource (e.g. docs://mcp-auth, docs://full-stack-auth, docs://agent-auth).
-3. Only use search_docs if no docs:// resource clearly covers the topic.
-
-Available resources:
-- docs://index — start here to navigate all documentation
-- docs://mcp-auth — add authentication to MCP servers (OAuth 2.1, DCR)
-- docs://full-stack-auth — user login, sessions, RBAC for web apps
-- docs://agent-auth — AI agent OAuth token vault, connectors, tool calling
-- docs://sso-scim — enterprise SSO (SAML/OIDC) and directory sync
-- docs://quickstart — getting started guides
-- docs://api-sdk — API reference, SDK methods, webhooks
-- docs://integrations — Okta, Google, Microsoft, and other IdP guides
-- docs://m2m-auth — machine-to-machine auth, client credentials, API keys`,
-  }
-);
 
 const app = express();
 
@@ -68,19 +45,17 @@ function getScalekit(): Scalekit {
 const useStdio = process.argv.includes('--stdio');
 
 (async () => {
-  registerTools(server)
-  logger.info('Registered tools successfully');
-  registerResources(server);
-  logger.info('Registered resources successfully');
-
   if (useStdio) {
     // HTTP-only: SIGTERM flushes PostHog. Stdio has no instrumentation.
+    // Stdio has exactly one long-lived connection, so one server is enough.
     logger.info('Starting MCP server in stdio mode');
-    await server.connect(new StdioServerTransport());
+    await createMcpServer().connect(new StdioServerTransport());
     return;
   }
 
-  instrumentServer(server);
+  // Build one server at startup so a registration error fails the boot, not the first request.
+  createMcpServer();
+  logger.info('Registered tools and resources successfully');
 
   app.use(async (req, res, next) => {
     try {
@@ -124,7 +99,11 @@ const useStdio = process.argv.includes('--stdio');
     }
   });
 
-  setupTransportRoutes(app, server);
+  setupTransportRoutes(app, () => {
+    const server = createMcpServer();
+    instrumentServer(server);
+    return server;
+  });
   logger.debug('Transport routes set up completed');
 
   getScalekit();
