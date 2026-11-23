@@ -46,6 +46,18 @@ export const ENDPOINTS = {
   providers: {
     list: `${SK_API_BASE_URL}/api/v1/providers`,
   },
+  agentkitConnections: {
+    create: `${SK_API_BASE_URL}/api/v1/agentkit/connection`,
+    list: `${SK_API_BASE_URL}/api/v1/agentkit/connection`,
+    get: (connectionIdentifier: string) => `${SK_API_BASE_URL}/api/v1/agentkit/connection/${encodeURIComponent(connectionIdentifier)}`,
+    update: (connectionId: string) => `${SK_API_BASE_URL}/api/v1/agentkit/connection/${encodeURIComponent(connectionId)}`,
+  },
+  virtualMcpServers: {
+    create: `${SK_API_BASE_URL}/api/v1/mcp/configs`,
+    list: `${SK_API_BASE_URL}/api/v1/mcp/configs`,
+    byId: (configId: string) => `${SK_API_BASE_URL}/api/v1/mcp/configs/${encodeURIComponent(configId)}`,
+    createSessionToken: (configId: string) => `${SK_API_BASE_URL}/api/v1/mcp/configs/${encodeURIComponent(configId)}/tokens`,
+  },
   tools: {
     list: `${SK_API_BASE_URL}/api/v1/tools`,
   },

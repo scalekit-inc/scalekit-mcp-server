@@ -8,7 +8,7 @@
     "build": "tsc",
     "start": "node dist/scalekit.js",
     "start:stdio": "node dist/scalekit.js --stdio",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "tsc -p tsconfig.test.json && node --test \"dist-test/test/**/*.test.js\""
   },
   "keywords": [],
   "author": "",
