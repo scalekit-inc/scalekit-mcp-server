@@ -18,7 +18,7 @@
     "@posthog/mcp": "^0.13.1",
     "@scalekit-sdk/node": "2.6.3",
     "cors": "^2.8.5",
-    "dotenv": "^17.4.2",
+    "dotenv": "^18.0.10",
     "express": "^5.3.0",
     "jsonwebtoken": ">=9.0.3",
     "node-fetch": "^3.3.2",
