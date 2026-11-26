@@ -1,5 +1,7 @@
 # Scalekit MCP Server
 
+[![scalekit-inc/scalekit-mcp-server MCP server](https://glama.ai/mcp/servers/scalekit-inc/scalekit-mcp-server/badges/score.svg)](https://glama.ai/mcp/servers/scalekit-inc/scalekit-mcp-server)
+
 The official MCP server for Scalekit. Point Cursor, Claude, or another MCP client at it, sign in once, and the agent can set up environments, organizations, and the connectors your users' agents call. The agent acts as that signed-in user. It does not reuse one shared password.
 
 - **Hosted.** `https://mcp.scalekit.com`. No local install for the hosted server.
